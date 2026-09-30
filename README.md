@@ -14,7 +14,7 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 | F2 Canonical model + entity resolution | **Silver done and verified in Snowflake** (matches DuckDB exactly). **Gold built and verified in Snowflake**: all 15 golden questions answered correctly from Gold |
 | F3 Governed questions (no AI) | **Built**: metric views, a catalogue of 18 reviewed questions and a keyword matcher. 15 of 15 golden questions and D01-D03 correct; matcher 19 of 20 on unseen rewordings. Try `python scripts/ask.py "how many alerts last month"` |
 | F4 Risk engine | **Built** (`sql/30_gold/32_risk_engine.sql`): 8 transparent rules, weighted score, reason codes, evidence and a ranked queue. All 25 cross-core structurers rank 1-25 of 472; **F4 acceptance PASS in Snowflake** |
-| F5 Document search | Notes, KYC summaries and the policy PDF generated; page index recorded for citations |
+| F5 Document search (no AI) | **Built**: BM25 keyword search over 32 policy sections, 2,873 notes and 2,541 KYC summaries, every hit with a citation. D04 finds section 4.2, page 3; 10 of 12 policy questions correct first time. Try `python -m search.search "..."` |
 | F6 Router, F7 Outputs, F8 App, F9 CoCo skill | Not started (Friday-Saturday). Built without AI: rule-based router, template narratives with approval, Streamlit. F9 test fixture (Core C) and target mapping format ready |
 
 ## Setup (8 commands)
@@ -23,7 +23,7 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 git clone <repo-url> sahasranshu-risk-copilot && cd sahasranshu-risk-copilot
 pip install -r requirements.txt
 python -m data_gen.generate                        # about 65 s; writes data/out/demo (58 MB)
-python -m pytest tests -q                          # 62 acceptance tests, about 15 s
+python -m pytest tests -q                          # 72 acceptance tests, about 15 s
 python scripts/local_duckdb.py --data data/out/demo # optional pre-flight of the Silver and Gold SQL on DuckDB
 snow connection add                                # once: your Snowflake trial account
 scripts/load_to_snowflake.sh --setup --with-eval   # roles, warehouse, stage, Bronze load, reconciliation
@@ -34,7 +34,11 @@ Then build Silver in order: `20_reference.sql`, `21_customer_std.sql`, `22_match
 
 Then Gold and the risk engine: `30_gold/30_config.sql`, `31_gold_core.sql`, `32_risk_engine.sql`. Check with `90_customer_360_proof.sql`, `91_eval_risk.sql` and `92_golden_check.sql`.
 
-Then the semantic layer: `40_semantic/40_metric_views.sql` and `41_question_catalog.sql`. Ask questions with `python scripts/ask.py "..."`. If you change `config/bank_demo.yaml`, run `python scripts/emit_config_sql.py` and then `30_config.sql` again.
+Then the semantic layer: `40_semantic/40_metric_views.sql` and `41_question_catalog.sql`. Ask questions with `python scripts/ask.py "..."`.
+
+Then document search: `50_search/50_policy_chunks.sql` and `51_doc_chunk.sql`. Search with `python -m search.search "..."`.
+
+If you change `config/bank_demo.yaml`, run `python scripts/emit_config_sql.py` and then `30_config.sql` again.
 
 The same profile and seed always produce byte-identical files; `data/out/demo/manifest.json` lists a SHA-256 for every file.
 
@@ -104,8 +108,10 @@ sql/10_bronze/             Bronze tables and COPY (generated from data_gen/schem
 sql/20_silver/             standardisation, entity resolution, review queue, data-quality exceptions (F2)
 sql/30_gold/               canonical banking model, config tables, risk engine and queue (F2, F4, F14)
 sql/40_semantic/           metric views and question catalogue (F3)
+sql/50_search/             policy sections and the searchable document table (F5)
 semantic/                  question catalogue and keyword matcher (F3)
-risk/ search/ agent/ outputs/ app/   F5-F8 (next)
+search/                    policy PDF extraction and BM25 search (F5)
+risk/ agent/ outputs/ app/ F6-F8 (next)
 coco_skills/onboard_core/  custom CoCo skill (F9)
 scripts/                   Bronze SQL generator, Snowflake loader, local DuckDB pre-flight
 tests/                     acceptance tests; tests/results/ holds measured results

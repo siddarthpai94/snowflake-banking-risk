@@ -25,6 +25,7 @@ SILVER_FILES = ["20_reference.sql", "21_customer_std.sql", "22_match_candidates.
                 "23_party_resolution.sql", "24_dq_exceptions.sql"]
 GOLD_FILES = ["30_config.sql", "31_gold_core.sql", "32_risk_engine.sql"]
 SEMANTIC_FILES = ["40_metric_views.sql", "41_question_catalog.sql"]
+SEARCH_FILES = ["50_policy_chunks.sql", "51_doc_chunk.sql"]
 
 # Snowflake functions DuckDB lacks, defined as macros with Snowflake semantics
 MACROS = [
@@ -61,6 +62,7 @@ def translate(sql: str) -> str:
     sql = re.sub(r"CREATE OR REPLACE DYNAMIC TABLE (\S+)\s+TARGET_LAG\s*=\s*'[^']*'\s+WAREHOUSE\s*=\s*\w+\s+"
                  r"COMMENT\s*=\s*'(?:[^']|'')*'\s+AS", r"CREATE OR REPLACE TABLE \1 AS", sql)
     sql = re.sub(r"\)\s*COMMENT\s*=\s*'(?:[^']|'')*'\s*;", ");", sql)
+    sql = re.sub(r"(CREATE SCHEMA IF NOT EXISTS \w+)\s+COMMENT\s*=\s*'(?:[^']|'')*'", r"\1", sql)
     sql = re.sub(r"\bREGEXP_REPLACE\(", "regexp_replace_all(", sql)
     sql = rewrite_calls(sql, "TRY_TO_DATE", lambda a, f: f"TRY_STRPTIME({a}, '{DATE_FMT[f]}')::DATE")
     sql = rewrite_calls(sql, "TRY_TO_TIMESTAMP", lambda a, f: f"TRY_STRPTIME({a}, '{DATE_FMT[f]}')")
@@ -108,6 +110,10 @@ def run_gold(con):
 def run_semantic(con):
     con.execute("CREATE SCHEMA IF NOT EXISTS semantic")
     run_files(con, "40_semantic", SEMANTIC_FILES)
+
+
+def run_search(con):
+    run_files(con, "50_search", SEARCH_FILES)
 
 
 def executor(con):
