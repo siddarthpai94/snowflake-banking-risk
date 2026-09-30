@@ -11,16 +11,17 @@ Bronze keeps each file as delivered, plus `_SOURCE_FILE` and `_SOURCE_ROW`. Silv
 | Entity (Gold) | Key | Built from | Notes |
 | --- | --- | --- | --- |
 | `party` | `party_id` (`PTY_` + 16 hex) | `SILVER.PARTY_XREF` | One per resolved real customer; people and organisations |
-| `party_source_record` | `record_id` (`core:key`) | `SILVER.PARTY_XREF` | Links every source record to its party with link status, score and reasons |
-| `household` | `household_id` | standardised address | People at the same normalised street address and ZIP |
 | `account` | `account_id` (`core:key`) | Bronze accounts + mapping | `CHECKING`, `SAVINGS`, `MONEY_MARKET`, `CERTIFICATE`; status `OPEN`/`DORMANT`/`CLOSED`; dormant and reactivation dates |
 | `loan` | `loan_id` (`core:key`) | Bronze loans + mapping | Canonical loan type, CRE category, owner-occupied flag, days past due |
 | `transaction` | `txn_id` (`core:key`) | Bronze transactions + mapping | Canonical type, signed amount, channel, branch, CTR flag, counterparty |
 | `alert` | `alert_id` (`core:key`) | both legacy monitoring systems | Canonical scenario, status, disposition, dates, owner |
 | `branch` | `branch_id` (`core:code`) | branch files | 12 Core A and 6 Core B branches |
-| `dq_exception` | rule + record | `SILVER.DQ_EXCEPTIONS` | Missing or future DOB, invalid ZIP, duplicate key, orphan account |
+| `kyc_profile` | `party_id` + core | KYC summaries | Occupation and expected monthly cash per core |
+| `risk_signal`, `risk_score`, `alert_queue` | `party_id` / alert | risk engine (F4) | Fired rules with evidence, weighted score, ranked queue |
 
-The column-level mappings are in `config/mappings/core_a.yaml` and `core_b.yaml`. They are also the target format for the F9 onboarding skill.
+Source-record links and review status stay in Silver (`SILVER.PARTY_XREF`, `SILVER.MATCH_REVIEW_QUEUE`), as do data-quality exceptions (`SILVER.DQ_EXCEPTIONS`). Households were in the original plan but were not built.
+
+The column-level mappings are in `config/mappings/core_a.yaml` and `core_b.yaml`. They are also the target format for the F9 onboarding tool.
 
 **Identity rules** (`sql/20_silver/22_match_candidates.sql`). Different non-null tax-id tokens always reject; the same token plus the same DOB auto-links. Without a token, name plus DOB must be corroborated by address or phone to auto-link, and everything weaker goes to the review queue. Links are 1:1 and mutual-best, so a weak pair can never chain two people together.
 
@@ -41,7 +42,7 @@ The column-level mappings are in `config/mappings/core_a.yaml` and `core_b.yaml`
 
 Ground truth for all of these is in `ground_truth/`, which is loaded only into the `EVAL` schema and never shown to the app or the agent.
 
-## 15 golden questions (F3; target: at least 13 correct through Cortex Analyst)
+## 15 golden questions (F3; target: at least 13 correct; built without AI, 15 of 15 correct through the reviewed question catalogue)
 
 Expected answers and metric definitions are in `ground_truth/golden_answers.json`. The values below are for the demo dataset (seed 20260930).
 

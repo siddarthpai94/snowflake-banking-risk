@@ -1,6 +1,6 @@
-# coco_skills/onboard_core: onboard a new core (F9), without AI
+# onboarding: onboard a new core (F9), without AI
 
-A rule-based tool plus a CoCo skill file (`SKILL.md`) that runs it. Given a new core's extract files, it:
+A rule-based tool (no AI) with a runbook for the person who reviews its output (`RUNBOOK.md`). Given a new core's extract files, it:
 
 1. **profiles** every column from a reproducible random sample (dates in four formats, epoch seconds, ISO timestamps, money, cents, IDs, UUIDs, tax tokens with any prefix or separators, phones, ZIPs, states, emails, "LAST, FIRST" names, "City, ST 12345" fields, code sets);
 2. **classifies** each file as customers, accounts or transactions (best score first, never first come);
@@ -10,8 +10,8 @@ A rule-based tool plus a CoCo skill file (`SKILL.md`) that runs it. Given a new 
 6. **writes** `mapping.yaml` (the format of `config/mappings/core_*.yaml`, plus confidence and review items), `10_bronze.sql`, `20_canonical.sql` and `30_dq_tests.sql`.
 
 ```
-python -m coco_skills.onboard_core.onboard --core core_c --files data/out/demo/core_c --out build/onboard/core_c
-python -m coco_skills.onboard_core.evaluate --data data/out/demo
+python -m onboarding.onboard --core core_c --files data/out/demo/core_c --out build/onboard/core_c
+python -m onboarding.evaluate --data data/out/demo
 ```
 
 ## Results (`evaluate.py`, demo data; the holdout seed gives the same)

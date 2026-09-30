@@ -14,10 +14,7 @@ GRANT ROLE RISK_ADMIN TO ROLE SYSADMIN;
 SET setup_user = CURRENT_USER();
 GRANT ROLE RISK_ADMIN TO USER IDENTIFIER($setup_user);
 
--- Cortex AI functions (AI_COMPLETE, AI_CLASSIFY, AI_PARSE_DOCUMENT, Cortex Search, Analyst, Agents)
-GRANT DATABASE ROLE SNOWFLAKE.CORTEX_USER TO ROLE RISK_ANALYST;
--- Only needed if the trial region lacks a model the agent uses:
--- ALTER ACCOUNT SET CORTEX_ENABLED_CROSS_REGION = 'ANY_REGION';
+-- No AI: the copilot uses plain SQL, rules and templates only. No Cortex AI role is granted.
 
 -- Smallest warehouse, suspends after 60 seconds (protects trial credits)
 CREATE WAREHOUSE IF NOT EXISTS RISK_WH
@@ -37,10 +34,10 @@ USE DATABASE RISK_COPILOT;
 CREATE SCHEMA IF NOT EXISTS BRONZE   COMMENT = 'Raw files as delivered, one table per source file, with lineage columns';
 CREATE SCHEMA IF NOT EXISTS SILVER   COMMENT = 'Typed, cleaned, standardised per source; entity resolution; data-quality results';
 CREATE SCHEMA IF NOT EXISTS GOLD     COMMENT = 'Canonical banking model across all cores';
-CREATE SCHEMA IF NOT EXISTS SEMANTIC COMMENT = 'Semantic views for Cortex Analyst (F3)';
-CREATE SCHEMA IF NOT EXISTS APP      COMMENT = 'Streamlit app, agent, search services';
+CREATE SCHEMA IF NOT EXISTS SEMANTIC COMMENT = 'Governed metric views and the reviewed question catalogue (F3)';
+CREATE SCHEMA IF NOT EXISTS APP      COMMENT = 'Reserved for app objects (F8)';
 CREATE SCHEMA IF NOT EXISTS AUDIT    COMMENT = 'Copilot audit log, approvals, case outputs (F7)';
-CREATE SCHEMA IF NOT EXISTS EVAL     COMMENT = 'Ground truth for acceptance tests only. Never granted to app or agent roles.';
+CREATE SCHEMA IF NOT EXISTS EVAL     COMMENT = 'Ground truth for acceptance tests only. Never granted to app or analyst roles.';
 
 -- CSV files are gzip-compressed with one header row; empty fields load as NULL.
 CREATE FILE FORMAT IF NOT EXISTS BRONZE.FF_CSV_GZ
@@ -48,7 +45,7 @@ CREATE FILE FORMAT IF NOT EXISTS BRONZE.FF_CSV_GZ
   EMPTY_FIELD_AS_NULL = TRUE NULL_IF = ('') ENCODING = 'UTF8'
   ERROR_ON_COLUMN_COUNT_MISMATCH = TRUE;
 
--- Server-side encryption is required for AI_PARSE_DOCUMENT on internal stages.
+-- Server-side encryption for staged files.
 CREATE STAGE IF NOT EXISTS BRONZE.RAW_STAGE
   DIRECTORY = (ENABLE = TRUE) ENCRYPTION = (TYPE = 'SNOWFLAKE_SSE')
   COMMENT = 'Synthetic core extracts and documents';
@@ -66,4 +63,4 @@ GRANT SELECT ON FUTURE VIEWS IN SCHEMA GOLD TO ROLE RISK_ANALYST;
 GRANT SELECT ON FUTURE DYNAMIC TABLES IN SCHEMA GOLD TO ROLE RISK_ANALYST;
 GRANT USAGE ON SCHEMA AUDIT TO ROLE RISK_INVESTIGATOR;
 
--- Setup check: every Cortex capability the plan depends on. Run 90_capability_check.sql next.
+-- Setup check: run 90_environment_check.sql next.

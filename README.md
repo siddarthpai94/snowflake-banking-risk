@@ -1,6 +1,8 @@
 # Sahasranshu Risk Copilot
 
-A risk, fraud and regulatory intelligence copilot on Snowflake, built with Cortex Code (CoCo) CLI for the Snowflake CoCo CLI Hackathon 2026, problem statement #01.
+A risk, fraud and regulatory intelligence copilot on Snowflake for the Snowflake Hackathon 2026, problem statement #01.
+
+**Built without AI.** No Cortex AI functions, no LLMs and no Cortex Code: every answer comes from plain SQL, written rules, reviewed templates and keyword scoring, so the same question always gives the same answer and every figure traces to source rows. Why, and what replaced each AI component: [`docs/decisions.md`](docs/decisions.md).
 
 **The demo scenario.** A community bank has just acquired another bank. It now runs two core systems, its alert volume has jumped, and the compliance team must answer the regulator with evidence. The copilot unifies both cores, ranks the risk, and drafts audit-ready output with citations.
 
@@ -18,32 +20,36 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 | F6 Router (no AI) | **Built**: rule-based router (catalogue, search, customer view, narrative, clarify) with the rule shown on every answer and an audit log. D01-D05 correct three runs in a row. Try `python scripts/copilot.py "..."` |
 | F7 Case narratives (no AI) | **Built**: narrative from a frozen evidence snapshot and reviewed templates, every claim with a policy page or source row; four-eyes approval; PDF with DRAFT watermark; reproduces byte for byte from its audit record. Try `python scripts/case.py draft --top --author you` |
 | F8 App (no AI) | **Built**: Streamlit, four screens (overview, data health, queue and customer, ask and cases); every summary figure opens to its source rows in one or two clicks. Run `streamlit run app/streamlit_app.py` |
-| F9 Onboard a new core (no AI) | **Built**: rule-based profiler and mapper plus a CoCo skill file. Core B and Core A from scratch agree with the hand-written mappings (100% on names, tax tokens, dates, contact details); Core C, never seen: 297 of 300 links to Core A, 0 false; generated data-quality tests find every injected issue. See `coco_skills/onboard_core/` |
+| F9 Onboard a new core (no AI) | **Built**: rule-based profiler and mapper plus a runbook. Core B and Core A from scratch agree with the hand-written mappings (100% on names, tax tokens, dates, contact details); Core C, never seen: 297 of 300 links to Core A, 0 false; generated data-quality tests find every injected issue. Try `python -m onboarding.onboard --core core_c --files data/out/demo/core_c`. See `onboarding/` |
 
-## Setup (8 commands)
+## Setup
 
 ```bash
 git clone <repo-url> sahasranshu-risk-copilot && cd sahasranshu-risk-copilot
 pip install -r requirements.txt
 python -m data_gen.generate                        # about 65 s; writes data/out/demo (58 MB)
-python -m pytest tests -q                          # 101 acceptance tests, about 15 s
+python -m pytest tests -q                          # 102 acceptance tests, about 30 s
 python scripts/local_duckdb.py --data data/out/demo # optional pre-flight of the Silver and Gold SQL on DuckDB
 snow connection add                                # once: your Snowflake trial account
-scripts/load_to_snowflake.sh --setup --with-eval   # roles, warehouse, stage, Bronze load, reconciliation
-snow sql -f sql/00_setup/90_capability_check.sql   # confirms Cortex features in your region
+scripts/build_all.sh --setup                       # roles, warehouse, Bronze load, every build step, 3 acceptance checks
+streamlit run app/streamlit_app.py                 # the app
 ```
 
-Then build Silver in order: `20_reference.sql`, `21_customer_std.sql`, `22_match_candidates.sql`, `23_party_resolution.sql`, `24_dq_exceptions.sql` (each with `snow sql -f`).
+On Windows PowerShell: `powershell -ExecutionPolicy Bypass -File scripts\build_all.ps1 -Setup`. The build stops at the first error; fix it and rerun with `-SkipLoad` (`--skip-load`). It ends with the matching evaluation (0 false merges), the F4 risk check (PASS) and the golden check (15 of 15).
 
-Then Gold and the risk engine: `30_gold/30_config.sql`, `31_gold_core.sql`, `32_risk_engine.sql`. Check with `90_customer_360_proof.sql`, `91_eval_risk.sql` and `92_golden_check.sql`.
+The steps the build runs, if you want them one at a time (`snow sql -f` each):
 
-Then the semantic layer: `40_semantic/40_metric_views.sql` and `41_question_catalog.sql`. Ask questions with `python scripts/ask.py "..."`.
+Silver in order: `20_reference.sql`, `21_customer_std.sql`, `22_match_candidates.sql`, `23_party_resolution.sql`, `24_dq_exceptions.sql` (each with `snow sql -f`).
 
-Then document search: `50_search/50_policy_chunks.sql` and `51_doc_chunk.sql`. Search with `python -m search.search "..."`.
+Gold and the risk engine: `30_gold/30_config.sql`, `31_gold_core.sql`, `32_risk_engine.sql`. Check with `90_customer_360_proof.sql`, `91_eval_risk.sql` and `92_golden_check.sql`.
 
-Then the audit log: `60_agent/60_audit.sql`. Ask anything with `python scripts/copilot.py "..."`.
+The semantic layer: `40_semantic/40_metric_views.sql` and `41_question_catalog.sql`. Ask questions with `python scripts/ask.py "..."`.
 
-Then case outputs: `70_outputs/70_case_output.sql`. Draft, approve and export with `python scripts/case.py ...`.
+Document search: `50_search/50_policy_chunks.sql` and `51_doc_chunk.sql`. Search with `python -m search.search "..."`.
+
+The audit log: `60_agent/60_audit.sql`. Ask anything with `python scripts/copilot.py "..."`.
+
+Case outputs: `70_outputs/70_case_output.sql`. Draft, approve and export with `python scripts/case.py ...`.
 
 If you change `config/bank_demo.yaml`, run `python scripts/emit_config_sql.py` and then `30_config.sql` again.
 
@@ -110,7 +116,7 @@ config/bank_demo.yaml      thresholds, rule weights, matching guards (F14)
 config/mappings/           Core A and Core B -> canonical mappings (target format for F9)
 config/reference/          nickname dictionary used as matching evidence
 data_gen/                  synthetic cores, documents and ground truth (F1)
-sql/00_setup/              roles, warehouse, schemas, stage, file format, capability check
+sql/00_setup/              roles, warehouse, schemas, stage, file format, environment check
 sql/10_bronze/             Bronze tables and COPY (generated from data_gen/schemas.py), load reconciliation
 sql/20_silver/             standardisation, entity resolution, review queue, data-quality exceptions (F2)
 sql/30_gold/               canonical banking model, config tables, risk engine and queue (F2, F4, F14)
@@ -123,10 +129,10 @@ search/                    policy PDF extraction and BM25 search (F5)
 agent/                     rule-based router and answer builder (F6)
 outputs/                   case narrative, approval store, PDF export (F7)
 app/                       Streamlit app (F8)
-coco_skills/onboard_core/  new-core onboarding tool, CoCo skill file, worked examples for Core B and Core C (F9)
-scripts/                   Bronze SQL generator, Snowflake loader, local DuckDB pre-flight
+onboarding/                new-core onboarding tool, runbook, worked examples for Core B and Core C (F9)
+scripts/                   one-command build, Snowflake loader, CLIs, Bronze SQL generator, local DuckDB pre-flight
 tests/                     acceptance tests; tests/results/ holds measured results
-docs/                      one-page spec, CoCo usage log
+docs/                      one-page spec, design decisions (why no AI), demo video script
 ```
 
 ## Known limits

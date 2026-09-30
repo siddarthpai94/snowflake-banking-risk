@@ -1,5 +1,5 @@
 # Generator profile for the hackathon demo dataset. ALL DATA IS SYNTHETIC.
-# Volumes follow the CoCo build plan (F1). Injection counts are exact.
+# Volumes follow the build plan (F1). Injection counts are exact.
 
 seed: 20260930
 window_start: "2026-03-01"

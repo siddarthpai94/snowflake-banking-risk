@@ -1,6 +1,6 @@
 """Score the onboarding tool (F9) on real data, in DuckDB.
 
-  python -m coco_skills.onboard_core.evaluate --data data/out/demo
+  python -m onboarding.evaluate --data data/out/demo
 
 For Core A and Core B, whose hand-written mappings already feed SILVER.CUSTOMER_STD, the generated canonical
 customer view is compared with CUSTOMER_STD value by value, field by field. For Core C, which no mapping has
@@ -15,11 +15,11 @@ from pathlib import Path
 
 import duckdb
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
 sys.path.insert(0, str(REPO))
 import local_duckdb as L  # noqa: E402
-from coco_skills.onboard_core.onboard import build_mapping, canonical_sql, dq_sql  # noqa: E402
+from onboarding.onboard import build_mapping, canonical_sql, dq_sql  # noqa: E402
 
 COMPARE = {"first_name": "first_name", "last_name": "last_name", "birth_date": "birth_date",
            "tax_token": "tax_token", "street": None, "city": "city", "state": "state", "zip": "zip5",

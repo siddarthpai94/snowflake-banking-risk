@@ -12,8 +12,8 @@ from conftest import REPO
 
 sys.path.insert(0, str(REPO / "scripts"))
 import local_duckdb as L  # noqa: E402
-from coco_skills.onboard_core import evaluate as E  # noqa: E402
-from coco_skills.onboard_core.onboard import build_mapping, name_tokens, write_outputs  # noqa: E402
+from onboarding import evaluate as E  # noqa: E402
+from onboarding.onboard import build_mapping, name_tokens, write_outputs  # noqa: E402
 
 
 @pytest.fixture(scope="module")
