@@ -143,7 +143,7 @@ def test_missed_ctr_aggregation_days_exist(read, small_data):
     demo = json.loads((out / "ground_truth" / "demo_answers.json").read_text())
     d02 = next(q for q in demo["questions"] if q["id"] == "D02")["answer"]
     assert d02["count"] == PROFILE["injected"]["missed_ctr_aggregation_people"]
-    cash = _cash(read).set_index(["acct", "date"])
+    cash = _cash(read).set_index(["acct", "date"]).sort_index()
     g = read("ground_truth/injected_patterns.csv.gz")
     xcs = g[g["pattern_type"] == "XCORE_STRUCTURING"]
     for day in d02["days"]:

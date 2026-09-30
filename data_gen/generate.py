@@ -476,7 +476,7 @@ def run(profile_path, out_dir, seed=None, quiet=False):
         "dq_summary": dq_df["issue_type"].value_counts().sort_index().to_dict(),
         "duplicates": dup_df["tier"].value_counts().sort_index().to_dict(),
         "lookalike_pairs": int(len(look_df)),
-        "sha256": {str(p.relative_to(out)): sha256_file(p) for p in files},
+        "sha256": {p.relative_to(out).as_posix(): sha256_file(p) for p in files},
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2, default=str) + "\n")
     log(f"done: {len(files)} files in {out}")
