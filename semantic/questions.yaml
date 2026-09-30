@@ -1,0 +1,290 @@
+# F3 question catalogue (no AI). Each question has fixed, reviewed SQL over the semantic views.
+# The app shows the catalogue as a picker; typed questions are matched to it by semantic/matcher.py.
+# headline: Python format string filled from the first result row (lower-case column names).
+# checks:   compared with ground truth by tests/test_f3_semantic.py (golden_answers.json / demo_answers.json).
+# Dates are the as-of month of the demo (August 2026) and match the golden definitions in docs/spec.md.
+
+questions:
+  - id: G01
+    question: How many customer records does each core hold?
+    keywords: [customer, records, each, core, hold, count, how many customers per core, customer file]
+    definition: customer records
+    sql: |
+      SELECT source_system AS core, COUNT(*) AS customer_records
+        FROM SEMANTIC.V_CUSTOMER_RECORD
+       GROUP BY source_system
+       ORDER BY source_system
+    headline: "Core A holds {customer_records:,} customer records; see the table for Core B."
+    checks:
+      - {golden: core_a_records, column: customer_records, where: {core: core_a}}
+      - {golden: core_b_records, column: customer_records, where: {core: core_b}}
+
+  - id: G02
+    question: How many unique customers do we have across both cores after matching?
+    keywords: [unique, customers, distinct, deduplicated, after matching, entity resolution, both cores, real customers, people]
+    definition: unique customers
+    sql: |
+      SELECT (SELECT COUNT(*) FROM GOLD.PARTY) AS unique_customers,
+             (SELECT COUNT(*) FROM SEMANTIC.V_CUSTOMER_RECORD) AS customer_records,
+             (SELECT COUNT(*) FROM GOLD.PARTY WHERE cores = 2) AS customers_in_both_cores
+    headline: "{unique_customers:,} unique customers from {customer_records:,} records; {customers_in_both_cores:,} bank with both cores."
+    checks:
+      - {golden: unique_customers, column: unique_customers, tolerance_pct: 0.5}
+
+  - id: G03
+    question: How many AML alerts were generated across both cores in August 2026?
+    keywords: [aml, alerts, generated, august, month, raised, alert volume, how many alerts, last month]
+    definition: alert volume
+    sql: |
+      SELECT COUNT(*) AS alerts,
+             SUM(IFF(source_system = 'core_a', 1, 0)) AS core_a_alerts,
+             SUM(IFF(source_system = 'core_b', 1, 0)) AS core_b_alerts
+        FROM SEMANTIC.V_ALERT
+       WHERE alert_date BETWEEN DATE '2026-08-01' AND DATE '2026-08-31'
+    headline: "{alerts:,} alerts in August 2026 (Core A {core_a_alerts:,}, Core B {core_b_alerts:,})."
+    checks:
+      - {golden: alerts, column: alerts}
+
+  - id: G04
+    question: What was the false-positive rate for alerts closed in Q2 2026?
+    keywords: [false, positive, rate, fp, closed, q2, quarter, second quarter, not suspicious, alert quality]
+    definition: false-positive rate
+    sql: |
+      SELECT COUNT(*) AS closed,
+             SUM(IFF(is_false_positive, 1, 0)) AS false_positives,
+             ROUND(100.0 * SUM(IFF(is_false_positive, 1, 0)) / COUNT(*), 1) AS false_positive_rate_pct
+        FROM SEMANTIC.V_ALERT
+       WHERE closed_on BETWEEN DATE '2026-04-01' AND DATE '2026-06-30'
+    headline: "{false_positive_rate_pct}% of the {closed:,} alerts closed in Q2 2026 were false positives."
+    checks:
+      - {golden: closed, column: closed}
+      - {golden: false_positives, column: false_positives}
+      - {golden: false_positive_rate_pct, column: false_positive_rate_pct}
+
+  - id: G05
+    question: Which three branches had the most alerts in the last 90 days, and how many each?
+    keywords: [branches, branch, most, alerts, last 90 days, top three, three months, busiest, where]
+    definition: alert volume
+    sql: |
+      SELECT branch, COUNT(*) AS alerts
+        FROM SEMANTIC.V_ALERT
+       WHERE alert_date > DATE '2026-08-31' - 90
+       GROUP BY branch
+       ORDER BY alerts DESC, branch
+       LIMIT 3
+    headline: "{branch} had the most alerts in the last 90 days ({alerts}); ties are listed alphabetically."
+    checks:
+      - {golden: top3, column: alerts, list_key: alerts, match_on: {branch: branch}}
+
+  - id: G06
+    question: How many alerts are still open more than 30 days after they were raised?
+    keywords: [alerts, still, open, more than 30 days, overdue, sla, backlog, aged, older than a month, past due alerts]
+    definition: open alert
+    sql: |
+      SELECT SUM(IFF(alert_date < DATE '2026-08-01', 1, 0)) AS open_over_30_days,
+             COUNT(*) AS open_total
+        FROM SEMANTIC.V_ALERT
+       WHERE is_open
+    headline: "{open_over_30_days} of {open_total} open alerts were raised more than 30 days ago."
+    checks:
+      - {golden: open_over_30_days, column: open_over_30_days}
+      - {golden: open_total, column: open_total}
+
+  - id: G07
+    question: What was the total value of cash deposits across both cores in August 2026?
+    keywords: [total, value, cash, deposits, cash in, august, both cores, deposited, how much cash]
+    definition: cash in
+    sql: |
+      SELECT ROUND(SUM(amount_usd), 2) AS cash_deposits_usd,
+             ROUND(SUM(IFF(source_system = 'core_a', amount_usd, 0)), 2) AS core_a_usd,
+             ROUND(SUM(IFF(source_system = 'core_b', amount_usd, 0)), 2) AS core_b_usd
+        FROM SEMANTIC.V_CASH
+       WHERE cash_direction = 'IN' AND posted_date BETWEEN DATE '2026-08-01' AND DATE '2026-08-31'
+    headline: "${cash_deposits_usd:,.2f} of cash was deposited across both cores in August 2026."
+    checks:
+      - {golden: cash_deposits_usd, column: cash_deposits_usd}
+
+  - id: G08
+    question: What was the total value of cash withdrawals, including ATM, across both cores in August 2026?
+    keywords: [cash, withdrawals, atm, cash out, withdrawn, august, total value, both cores]
+    definition: cash out
+    sql: |
+      SELECT ROUND(SUM(amount_usd), 2) AS cash_withdrawals_usd,
+             ROUND(SUM(IFF(txn_type = 'ATM_WITHDRAWAL', amount_usd, 0)), 2) AS atm_usd,
+             ROUND(SUM(IFF(txn_type = 'CASH_WITHDRAWAL', amount_usd, 0)), 2) AS teller_usd
+        FROM SEMANTIC.V_CASH
+       WHERE cash_direction = 'OUT' AND posted_date BETWEEN DATE '2026-08-01' AND DATE '2026-08-31'
+    headline: "${cash_withdrawals_usd:,.2f} of cash was withdrawn (teller and ATM) in August 2026."
+    checks:
+      - {golden: cash_withdrawals_usd, column: cash_withdrawals_usd}
+
+  - id: G09
+    question: What is the loan-to-deposit ratio as of 31 August 2026?
+    keywords: [loan, deposit, ratio, ltd, loan to deposit, liquidity, loans versus deposits]
+    definition: loan-to-deposit ratio
+    sql: |
+      SELECT ROUND(l.usd, 2) AS loans_usd, ROUND(d.usd, 2) AS deposits_usd,
+             ROUND(100.0 * l.usd / d.usd, 1) AS loan_to_deposit_pct
+        FROM (SELECT SUM(principal_usd) AS usd FROM SEMANTIC.V_LOAN) l
+       CROSS JOIN (SELECT SUM(balance_usd) AS usd FROM SEMANTIC.V_DEPOSIT) d
+    headline: "The loan-to-deposit ratio is {loan_to_deposit_pct}% (${loans_usd:,.0f} loans / ${deposits_usd:,.0f} deposits)."
+    checks:
+      - {golden: loans_usd, column: loans_usd}
+      - {golden: deposits_usd, column: deposits_usd}
+      - {golden: loan_to_deposit_pct, column: loan_to_deposit_pct}
+
+  - id: G10
+    question: What is non-owner-occupied CRE as a percentage of total risk-based capital?
+    keywords: [cre, commercial real estate, non owner occupied, capital, concentration, risk based capital, percentage]
+    definition: CRE concentration
+    sql: |
+      SELECT ROUND(SUM(IFF(l.is_non_owner_occupied_cre, l.principal_usd, 0)), 2) AS non_owner_occupied_cre_usd,
+             MAX(c.num_value) AS total_risk_based_capital_usd,
+             ROUND(100.0 * SUM(IFF(l.is_non_owner_occupied_cre, l.principal_usd, 0)) / MAX(c.num_value), 1) AS cre_to_capital_pct,
+             ROUND(100.0 * SUM(IFF(l.is_non_owner_occupied_cre, l.principal_usd, 0)) / SUM(l.principal_usd), 1) AS cre_share_of_loans_pct
+        FROM SEMANTIC.V_LOAN l
+       CROSS JOIN (SELECT num_value FROM GOLD.CONFIG_PARAM WHERE name = 'capital.total_risk_based_capital_usd') c
+    headline: "Non-owner-occupied CRE is {cre_to_capital_pct}% of total risk-based capital ({cre_share_of_loans_pct}% of loans)."
+    checks:
+      - {golden: non_owner_occupied_cre_usd, column: non_owner_occupied_cre_usd}
+      - {golden: cre_to_capital_pct, column: cre_to_capital_pct}
+      - {golden: cre_share_of_loans_pct, column: cre_share_of_loans_pct}
+
+  - id: G11
+    question: What are total deposit balances in each core?
+    keywords: [deposit, balances, each core, total deposits, how much deposits, by core, funding]
+    definition: deposit balances
+    sql: |
+      SELECT source_system AS core, ROUND(SUM(balance_usd), 2) AS deposits_usd, COUNT(*) AS accounts
+        FROM SEMANTIC.V_DEPOSIT
+       GROUP BY source_system
+       ORDER BY source_system
+    headline: "Core A holds ${deposits_usd:,.2f} in deposits; see the table for Core B."
+    checks:
+      - {golden: core_a_deposits_usd, column: deposits_usd, where: {core: core_a}}
+      - {golden: core_b_deposits_usd, column: deposits_usd, where: {core: core_b}}
+
+  - id: G12
+    question: How many deposit accounts are dormant as of 31 August 2026?
+    keywords: [dormant, accounts, inactive, deposit accounts, how many dormant]
+    definition: dormant account
+    sql: |
+      SELECT SUM(IFF(is_dormant, 1, 0)) AS dormant_accounts,
+             SUM(IFF(is_dormant AND source_system = 'core_a', 1, 0)) AS core_a,
+             SUM(IFF(is_dormant AND source_system = 'core_b', 1, 0)) AS core_b
+        FROM SEMANTIC.V_DEPOSIT
+    headline: "{dormant_accounts} deposit accounts are dormant (Core A {core_a}, Core B {core_b})."
+    checks:
+      - {golden: dormant_accounts, column: dormant_accounts}
+
+  - id: G13
+    question: Who are the top five customers by cash deposited across both cores in the last 30 days?
+    keywords: [top, five, customers, cash, deposited, last 30 days, biggest, largest, who deposited most]
+    definition: cash in
+    sql: |
+      SELECT display_name AS customer,
+             ROUND(SUM(IFF(source_system = 'core_a', amount_usd, 0)), 2) AS core_a_usd,
+             ROUND(SUM(IFF(source_system = 'core_b', amount_usd, 0)), 2) AS core_b_usd,
+             ROUND(SUM(amount_usd), 2) AS cash_deposits_usd
+        FROM SEMANTIC.V_CASH
+       WHERE cash_direction = 'IN' AND posted_date BETWEEN DATE '2026-08-02' AND DATE '2026-08-31'
+       GROUP BY party_id, display_name
+       ORDER BY cash_deposits_usd DESC
+       LIMIT 5
+    headline: "{customer} deposited the most cash in the last 30 days (${cash_deposits_usd:,.2f})."
+    checks:
+      - {golden: top5, column: cash_deposits_usd, list_key: cash_deposits_usd, match_on: {customer: name}}
+
+  - id: G14
+    question: What was the average number of days to close alerts closed in Q2 2026?
+    keywords: [average, days, close, alerts, q2, time to close, how long, resolution time, quarter]
+    definition: days to close
+    sql: |
+      SELECT ROUND(AVG(days_to_close), 1) AS avg_days_to_close, COUNT(*) AS closed
+        FROM SEMANTIC.V_ALERT
+       WHERE closed_on BETWEEN DATE '2026-04-01' AND DATE '2026-06-30'
+    headline: "Alerts closed in Q2 2026 took {avg_days_to_close} days on average to close."
+    checks:
+      - {golden: avg_days_to_close, column: avg_days_to_close}
+
+  - id: G15
+    question: How many loans are 90 or more days past due, and what is their outstanding principal?
+    keywords: [loans, 90 days, past due, delinquent, non performing, overdue loans, principal, credit quality]
+    definition: 90+ days past due
+    sql: |
+      SELECT SUM(IFF(is_90_plus_past_due, 1, 0)) AS loans_90_plus,
+             ROUND(SUM(IFF(is_90_plus_past_due, principal_usd, 0)), 2) AS principal_usd
+        FROM SEMANTIC.V_LOAN
+    headline: "{loans_90_plus} loans are 90+ days past due, with ${principal_usd:,.2f} outstanding."
+    checks:
+      - {golden: loans_90_plus, column: loans_90_plus}
+      - {golden: principal_usd, column: principal_usd}
+
+  - id: D01
+    question: Which customers moved more than $50k in cash across both cores in 30 days, and what do their KYC files say?
+    keywords: [customers, moved, more than 50k, 50000, cash, both cores, 30 days, kyc, structuring, what do their kyc files say, over threshold]
+    definition: cash in
+    sql: |
+      WITH c AS (
+          SELECT party_id,
+                 SUM(IFF(source_system = 'core_a', amount_usd, 0)) AS core_a_usd,
+                 SUM(IFF(source_system = 'core_b', amount_usd, 0)) AS core_b_usd,
+                 SUM(amount_usd) AS total_usd
+            FROM SEMANTIC.V_CASH
+           WHERE cash_direction = 'IN' AND posted_date BETWEEN DATE '2026-08-02' AND DATE '2026-08-31'
+             AND party_id IS NOT NULL
+           GROUP BY party_id
+          HAVING SUM(amount_usd) > 50000
+      ),
+      k AS (
+          SELECT party_id,
+                 LISTAGG(source_system || ': ' || occupation || ', expects $' || CAST(CAST(expected_monthly_cash_usd AS BIGINT) AS VARCHAR) || '/month', ' | ')
+                   WITHIN GROUP (ORDER BY source_system) AS kyc_says,
+                 MAX(expected_monthly_cash_usd) AS expected_monthly_cash_usd
+            FROM GOLD.KYC_PROFILE WHERE party_id IS NOT NULL GROUP BY party_id
+      )
+      SELECT p.display_name AS customer, ROUND(c.core_a_usd, 2) AS core_a_usd, ROUND(c.core_b_usd, 2) AS core_b_usd,
+             ROUND(c.total_usd, 2) AS total_cash_usd, k.kyc_says,
+             IFF(c.total_usd <= 1.5 * k.expected_monthly_cash_usd, 'Explained by KYC', 'Not explained by KYC') AS kyc_verdict,
+             COALESCE(s.risk_score, 0) AS risk_score, s.top_reasons
+        FROM c
+        JOIN GOLD.PARTY p ON p.party_id = c.party_id
+        LEFT JOIN k ON k.party_id = c.party_id
+        LEFT JOIN GOLD.RISK_SCORE s ON s.party_id = c.party_id
+       ORDER BY risk_score DESC, total_cash_usd DESC
+    headline: "{row_count} customers moved over $50,000 in cash in 30 days; the table shows which their KYC explains."
+    checks:
+      - {demo: count, row_count: true}
+      - {demo: explained_by_kyc, count_where: {kyc_verdict: Explained by KYC}}
+      - {demo: suspicious, count_where: {kyc_verdict: Not explained by KYC}}
+
+  - id: D02
+    question: On which days did a customer's cash deposits across both cores exceed $10,000 with no CTR filed?
+    keywords: [ctr, currency transaction report, same day, aggregation, 10000, 10k, no ctr filed, missed ctr, days, both cores]
+    definition: cash in
+    sql: |
+      SELECT MAX(display_name) AS customer, posted_date AS business_day,
+             ROUND(SUM(IFF(source_system = 'core_a', amount_usd, 0)), 2) AS core_a_usd,
+             ROUND(SUM(IFF(source_system = 'core_b', amount_usd, 0)), 2) AS core_b_usd,
+             ROUND(SUM(amount_usd), 2) AS total_usd
+        FROM SEMANTIC.V_CASH
+       WHERE cash_direction = 'IN' AND party_id IS NOT NULL
+       GROUP BY party_id, posted_date
+      HAVING COUNT(DISTINCT source_system) = 2 AND SUM(amount_usd) > 10000 AND MAX(IFF(ctr_filed, 1, 0)) = 0
+       ORDER BY business_day, customer
+    headline: "{row_count} customer-days had same-day cash over $10,000 across the two cores with no CTR (policy 4.2)."
+    checks:
+      - {demo: count, row_count: true}
+
+  - id: D03
+    question: Which alerts should my team work first today, and why?
+    keywords: [work first, priority, prioritise, prioritize, queue, today, highest risk, riskiest, why, triage, top alerts]
+    definition: risk score
+    sql: |
+      SELECT queue_rank, display_name AS customer, origin, priority_score, reasons, evidence
+        FROM GOLD.ALERT_QUEUE
+       WHERE queue_rank <= 10
+       ORDER BY queue_rank
+    headline: "Start with {customer} (priority {priority_score:.0f}): {reasons}."
+    checks:
+      - {demo_d05_top: true}

@@ -12,7 +12,7 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 | --- | --- |
 | F1 Synthetic two-core bank generator | **Done**: 50,000 customer records, 80,000 accounts, 20,000 loans, 2.07M transactions, 1,502 alerts, 2,873 investigator notes, 2,541 KYC summaries, BSA policy PDF, ground truth |
 | F2 Canonical model + entity resolution | **Silver done and verified in Snowflake** (matches DuckDB exactly). **Gold built and verified in Snowflake**: all 15 golden questions answered correctly from Gold |
-| F3 Semantic view | Spec and 15 golden questions ready; golden answers already reproduced by `sql/30_gold/92_golden_check.sql`. No AI: metric views plus a question picker |
+| F3 Governed questions (no AI) | **Built**: metric views, a catalogue of 18 reviewed questions and a keyword matcher. 15 of 15 golden questions and D01-D03 correct; matcher 19 of 20 on unseen rewordings. Try `python scripts/ask.py "how many alerts last month"` |
 | F4 Risk engine | **Built** (`sql/30_gold/32_risk_engine.sql`): 8 transparent rules, weighted score, reason codes, evidence and a ranked queue. All 25 cross-core structurers rank 1-25 of 472; **F4 acceptance PASS in Snowflake** |
 | F5 Document search | Notes, KYC summaries and the policy PDF generated; page index recorded for citations |
 | F6 Router, F7 Outputs, F8 App, F9 CoCo skill | Not started (Friday-Saturday). Built without AI: rule-based router, template narratives with approval, Streamlit. F9 test fixture (Core C) and target mapping format ready |
@@ -23,7 +23,7 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 git clone <repo-url> sahasranshu-risk-copilot && cd sahasranshu-risk-copilot
 pip install -r requirements.txt
 python -m data_gen.generate                        # about 65 s; writes data/out/demo (58 MB)
-python -m pytest tests -q                          # 39 acceptance tests, about 15 s
+python -m pytest tests -q                          # 62 acceptance tests, about 15 s
 python scripts/local_duckdb.py --data data/out/demo # optional pre-flight of the Silver and Gold SQL on DuckDB
 snow connection add                                # once: your Snowflake trial account
 scripts/load_to_snowflake.sh --setup --with-eval   # roles, warehouse, stage, Bronze load, reconciliation
@@ -32,7 +32,9 @@ snow sql -f sql/00_setup/90_capability_check.sql   # confirms Cortex features in
 
 Then build Silver in order: `20_reference.sql`, `21_customer_std.sql`, `22_match_candidates.sql`, `23_party_resolution.sql`, `24_dq_exceptions.sql` (each with `snow sql -f`).
 
-Then Gold and the risk engine: `30_gold/30_config.sql`, `31_gold_core.sql`, `32_risk_engine.sql`. Check with `90_customer_360_proof.sql`, `91_eval_risk.sql` and `92_golden_check.sql`. If you change `config/bank_demo.yaml`, run `python scripts/emit_config_sql.py` and then `30_config.sql` again.
+Then Gold and the risk engine: `30_gold/30_config.sql`, `31_gold_core.sql`, `32_risk_engine.sql`. Check with `90_customer_360_proof.sql`, `91_eval_risk.sql` and `92_golden_check.sql`.
+
+Then the semantic layer: `40_semantic/40_metric_views.sql` and `41_question_catalog.sql`. Ask questions with `python scripts/ask.py "..."`. If you change `config/bank_demo.yaml`, run `python scripts/emit_config_sql.py` and then `30_config.sql` again.
 
 The same profile and seed always produce byte-identical files; `data/out/demo/manifest.json` lists a SHA-256 for every file.
 
@@ -101,7 +103,9 @@ sql/00_setup/              roles, warehouse, schemas, stage, file format, capabi
 sql/10_bronze/             Bronze tables and COPY (generated from data_gen/schemas.py), load reconciliation
 sql/20_silver/             standardisation, entity resolution, review queue, data-quality exceptions (F2)
 sql/30_gold/               canonical banking model, config tables, risk engine and queue (F2, F4, F14)
-semantic/ risk/ search/ agent/ outputs/ app/   F3, F5-F8 (next)
+sql/40_semantic/           metric views and question catalogue (F3)
+semantic/                  question catalogue and keyword matcher (F3)
+risk/ search/ agent/ outputs/ app/   F5-F8 (next)
 coco_skills/onboard_core/  custom CoCo skill (F9)
 scripts/                   Bronze SQL generator, Snowflake loader, local DuckDB pre-flight
 tests/                     acceptance tests; tests/results/ holds measured results

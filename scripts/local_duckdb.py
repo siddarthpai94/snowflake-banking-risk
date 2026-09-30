@@ -24,6 +24,7 @@ from data_gen.schemas import ALL_TABLES  # noqa: E402
 SILVER_FILES = ["20_reference.sql", "21_customer_std.sql", "22_match_candidates.sql",
                 "23_party_resolution.sql", "24_dq_exceptions.sql"]
 GOLD_FILES = ["30_config.sql", "31_gold_core.sql", "32_risk_engine.sql"]
+SEMANTIC_FILES = ["40_metric_views.sql", "41_question_catalog.sql"]
 
 # Snowflake functions DuckDB lacks, defined as macros with Snowflake semantics
 MACROS = [
@@ -56,7 +57,7 @@ def rewrite_calls(sql: str, fname: str, fn) -> str:
 
 
 def translate(sql: str) -> str:
-    sql = "\n".join(l for l in sql.splitlines() if not re.match(r"\s*USE\s", l, re.I))
+    sql = "\n".join(l for l in sql.splitlines() if not re.match(r"\s*(USE|GRANT)\s", l, re.I))
     sql = re.sub(r"CREATE OR REPLACE DYNAMIC TABLE (\S+)\s+TARGET_LAG\s*=\s*'[^']*'\s+WAREHOUSE\s*=\s*\w+\s+"
                  r"COMMENT\s*=\s*'(?:[^']|'')*'\s+AS", r"CREATE OR REPLACE TABLE \1 AS", sql)
     sql = re.sub(r"\)\s*COMMENT\s*=\s*'(?:[^']|'')*'\s*;", ");", sql)
@@ -102,6 +103,16 @@ def run_silver(con):
 def run_gold(con):
     con.execute("CREATE SCHEMA IF NOT EXISTS gold")
     run_files(con, "30_gold", GOLD_FILES)
+
+
+def run_semantic(con):
+    con.execute("CREATE SCHEMA IF NOT EXISTS semantic")
+    run_files(con, "40_semantic", SEMANTIC_FILES)
+
+
+def executor(con):
+    """A function that runs Snowflake SQL text on DuckDB and returns a DataFrame (for semantic/catalog.py)."""
+    return lambda sql: con.execute(translate(sql)).df()
 
 
 def evaluate(con, data: Path):
