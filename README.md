@@ -17,7 +17,8 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 | F5 Document search (no AI) | **Built**: BM25 keyword search over 32 policy sections, 2,873 notes and 2,541 KYC summaries, every hit with a citation. D04 finds section 4.2, page 3; 10 of 12 policy questions correct first time. Try `python -m search.search "..."` |
 | F6 Router (no AI) | **Built**: rule-based router (catalogue, search, customer view, narrative, clarify) with the rule shown on every answer and an audit log. D01-D05 correct three runs in a row. Try `python scripts/copilot.py "..."` |
 | F7 Case narratives (no AI) | **Built**: narrative from a frozen evidence snapshot and reviewed templates, every claim with a policy page or source row; four-eyes approval; PDF with DRAFT watermark; reproduces byte for byte from its audit record. Try `python scripts/case.py draft --top --author you` |
-| F8 App, F9 CoCo skill | Next. F8: Streamlit; F9 test fixture (Core C) and target mapping format ready |
+| F8 App (no AI) | **Built**: Streamlit, four screens (overview, data health, queue and customer, ask and cases); every summary figure opens to its source rows in one or two clicks. Run `streamlit run app/streamlit_app.py` |
+| F9 CoCo skill | Next. Core C test fixture and target mapping format ready |
 
 ## Setup (8 commands)
 
@@ -25,7 +26,7 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 git clone <repo-url> sahasranshu-risk-copilot && cd sahasranshu-risk-copilot
 pip install -r requirements.txt
 python -m data_gen.generate                        # about 65 s; writes data/out/demo (58 MB)
-python -m pytest tests -q                          # 85 acceptance tests, about 15 s
+python -m pytest tests -q                          # 89 acceptance tests, about 15 s
 python scripts/local_duckdb.py --data data/out/demo # optional pre-flight of the Silver and Gold SQL on DuckDB
 snow connection add                                # once: your Snowflake trial account
 scripts/load_to_snowflake.sh --setup --with-eval   # roles, warehouse, stage, Bronze load, reconciliation
@@ -121,7 +122,7 @@ semantic/                  question catalogue and keyword matcher (F3)
 search/                    policy PDF extraction and BM25 search (F5)
 agent/                     rule-based router and answer builder (F6)
 outputs/                   case narrative, approval store, PDF export (F7)
-app/                       F8 (next)
+app/                       Streamlit app (F8)
 coco_skills/onboard_core/  custom CoCo skill (F9)
 scripts/                   Bronze SQL generator, Snowflake loader, local DuckDB pre-flight
 tests/                     acceptance tests; tests/results/ holds measured results
