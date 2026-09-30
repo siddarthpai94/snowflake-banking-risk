@@ -1,0 +1,238 @@
+{
+  "dataset": "holdout",
+  "engine": "duckdb 1.5.6 (local pre-flight)",
+  "golden_questions_ok": "25/25",
+  "golden": [
+    {
+      "question": "G01",
+      "metric": "core_a_records",
+      "expected": 32000,
+      "got": "32000",
+      "ok": true
+    },
+    {
+      "question": "G01",
+      "metric": "core_b_records",
+      "expected": 18000,
+      "got": "18000",
+      "ok": true
+    },
+    {
+      "question": "G02",
+      "metric": "unique_customers",
+      "expected": 46000,
+      "got": "46041",
+      "ok": true
+    },
+    {
+      "question": "G03",
+      "metric": "alerts",
+      "expected": 241,
+      "got": "241",
+      "ok": true
+    },
+    {
+      "question": "G04",
+      "metric": "false_positive_rate_pct",
+      "expected": 91.4,
+      "got": "91.4",
+      "ok": true
+    },
+    {
+      "question": "G05",
+      "metric": "rank1",
+      "expected": "Wrenfield=67",
+      "got": "Wrenfield=67",
+      "ok": true
+    },
+    {
+      "question": "G05",
+      "metric": "rank2",
+      "expected": "Stillwater Junction=52",
+      "got": "Stillwater Junction=52",
+      "ok": true
+    },
+    {
+      "question": "G05",
+      "metric": "rank3",
+      "expected": "Linden Crossing=49",
+      "got": "Linden Crossing=49",
+      "ok": true
+    },
+    {
+      "question": "G06",
+      "metric": "open_over_30_days",
+      "expected": 70,
+      "got": "70",
+      "ok": true
+    },
+    {
+      "question": "G06",
+      "metric": "open_total",
+      "expected": 209,
+      "got": "209",
+      "ok": true
+    },
+    {
+      "question": "G07",
+      "metric": "cash_deposits_usd",
+      "expected": 13258668.76,
+      "got": "13258668.76",
+      "ok": true
+    },
+    {
+      "question": "G08",
+      "metric": "cash_withdrawals_usd",
+      "expected": 6764984.94,
+      "got": "6764984.94",
+      "ok": true
+    },
+    {
+      "question": "G09",
+      "metric": "loan_to_deposit_pct",
+      "expected": 68.0,
+      "got": "68.0",
+      "ok": true
+    },
+    {
+      "question": "G10",
+      "metric": "cre_to_capital_pct",
+      "expected": 209.2,
+      "got": "209.2",
+      "ok": true
+    },
+    {
+      "question": "G11",
+      "metric": "core_a_deposits_usd",
+      "expected": 1894706150.64,
+      "got": "1894706150.64",
+      "ok": true
+    },
+    {
+      "question": "G11",
+      "metric": "core_b_deposits_usd",
+      "expected": 913215661.22,
+      "got": "913215661.22",
+      "ok": true
+    },
+    {
+      "question": "G12",
+      "metric": "dormant_accounts",
+      "expected": 500,
+      "got": "500",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank1",
+      "expected": "NAVA LAUNDROMAT LLC=94835.27",
+      "got": "NAVA LAUNDROMAT LLC=94835.27",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank2",
+      "expected": "VAUGHN CONVENIENCE STORE INC=92428.52",
+      "got": "VAUGHN CONVENIENCE STORE INC=92428.52",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank3",
+      "expected": "FLOYD DINER LLC=88143.69",
+      "got": "FLOYD DINER LLC=88143.69",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank4",
+      "expected": "PATRICK FAMILY RESTAURANT LLC=87005.92",
+      "got": "PATRICK FAMILY RESTAURANT LLC=87005.92",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank5",
+      "expected": "MCGEE DINER LLC=86853.72",
+      "got": "MCGEE DINER LLC=86853.72",
+      "ok": true
+    },
+    {
+      "question": "G14",
+      "metric": "avg_days_to_close",
+      "expected": 15.2,
+      "got": "15.2",
+      "ok": true
+    },
+    {
+      "question": "G15",
+      "metric": "loans_90_plus",
+      "expected": 98,
+      "got": "98",
+      "ok": true
+    },
+    {
+      "question": "G15",
+      "metric": "principal_usd",
+      "expected": 11633791.31,
+      "got": "11633791.31",
+      "ok": true
+    }
+  ],
+  "risk": {
+    "queue_size": 431,
+    "by_pattern_type": {
+      "CASH_INTENSIVE_LEGITIMATE": {
+        "patterns": 10,
+        "in_queue": 0,
+        "worst_rank": null,
+        "min_score": 0.0,
+        "max_score": 0.0,
+        "all_expected_codes_fired": 10
+      },
+      "DORMANT_REACTIVATION": {
+        "patterns": 40,
+        "in_queue": 40,
+        "worst_rank": 431,
+        "min_score": 20.0,
+        "max_score": 20.0,
+        "all_expected_codes_fired": 40
+      },
+      "RAPID_IN_OUT": {
+        "patterns": 30,
+        "in_queue": 30,
+        "worst_rank": 309,
+        "min_score": 25.0,
+        "max_score": 25.0,
+        "all_expected_codes_fired": 30
+      },
+      "SINGLE_CORE_STRUCTURING": {
+        "patterns": 15,
+        "in_queue": 15,
+        "worst_rank": 93,
+        "min_score": 35.0,
+        "max_score": 35.0,
+        "all_expected_codes_fired": 15
+      },
+      "XCORE_STRUCTURING": {
+        "patterns": 25,
+        "in_queue": 25,
+        "worst_rank": 25,
+        "min_score": 70.0,
+        "max_score": 100.0,
+        "all_expected_codes_fired": 25
+      }
+    },
+    "xcs_in_top_10pct": 25,
+    "xcs_total": 25,
+    "xcs_with_3plus_expected_codes": 25,
+    "queue_top": {
+      "name": "GEORGE STEPHENS",
+      "priority": 100.0,
+      "reasons": "XCORE_CASH_30D; CTR_AGGREGATION_MISSED; NEAR_THRESHOLD_CASH"
+    },
+    "d05_expected": "George Stephens",
+    "ctr_missed_days": 8,
+    "d02_expected": 8
+  }
+}

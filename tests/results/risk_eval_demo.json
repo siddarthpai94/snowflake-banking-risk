@@ -1,0 +1,238 @@
+{
+  "dataset": "demo",
+  "engine": "duckdb 1.5.6 (local pre-flight)",
+  "golden_questions_ok": "25/25",
+  "golden": [
+    {
+      "question": "G01",
+      "metric": "core_a_records",
+      "expected": 32000,
+      "got": "32000",
+      "ok": true
+    },
+    {
+      "question": "G01",
+      "metric": "core_b_records",
+      "expected": 18000,
+      "got": "18000",
+      "ok": true
+    },
+    {
+      "question": "G02",
+      "metric": "unique_customers",
+      "expected": 46000,
+      "got": "46052",
+      "ok": true
+    },
+    {
+      "question": "G03",
+      "metric": "alerts",
+      "expected": 293,
+      "got": "293",
+      "ok": true
+    },
+    {
+      "question": "G04",
+      "metric": "false_positive_rate_pct",
+      "expected": 89.5,
+      "got": "89.5",
+      "ok": true
+    },
+    {
+      "question": "G05",
+      "metric": "rank1",
+      "expected": "Pellbrook Downtown=56",
+      "got": "Pellbrook Downtown=56",
+      "ok": true
+    },
+    {
+      "question": "G05",
+      "metric": "rank2",
+      "expected": "Wrenfield=56",
+      "got": "Wrenfield=56",
+      "ok": true
+    },
+    {
+      "question": "G05",
+      "metric": "rank3",
+      "expected": "A04=54",
+      "got": "A04=54",
+      "ok": true
+    },
+    {
+      "question": "G06",
+      "metric": "open_over_30_days",
+      "expected": 69,
+      "got": "69",
+      "ok": true
+    },
+    {
+      "question": "G06",
+      "metric": "open_total",
+      "expected": 246,
+      "got": "246",
+      "ok": true
+    },
+    {
+      "question": "G07",
+      "metric": "cash_deposits_usd",
+      "expected": 13317811.79,
+      "got": "13317811.79",
+      "ok": true
+    },
+    {
+      "question": "G08",
+      "metric": "cash_withdrawals_usd",
+      "expected": 6687362.27,
+      "got": "6687362.27",
+      "ok": true
+    },
+    {
+      "question": "G09",
+      "metric": "loan_to_deposit_pct",
+      "expected": 66.2,
+      "got": "66.2",
+      "ok": true
+    },
+    {
+      "question": "G10",
+      "metric": "cre_to_capital_pct",
+      "expected": 198.9,
+      "got": "198.9",
+      "ok": true
+    },
+    {
+      "question": "G11",
+      "metric": "core_a_deposits_usd",
+      "expected": 1896886848.53,
+      "got": "1896886848.53",
+      "ok": true
+    },
+    {
+      "question": "G11",
+      "metric": "core_b_deposits_usd",
+      "expected": 970122176.7,
+      "got": "970122176.7",
+      "ok": true
+    },
+    {
+      "question": "G12",
+      "metric": "dormant_accounts",
+      "expected": 500,
+      "got": "500",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank1",
+      "expected": "HARRISON FAMILY RESTAURANT LLC=109107.02",
+      "got": "HARRISON FAMILY RESTAURANT LLC=109107.02",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank2",
+      "expected": "FLOWERS LAUNDROMAT LLC=105065.92",
+      "got": "FLOWERS LAUNDROMAT LLC=105065.92",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank3",
+      "expected": "BOWMAN CONVENIENCE STORE INC=100262.23",
+      "got": "BOWMAN CONVENIENCE STORE INC=100262.23",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank4",
+      "expected": "SIMON FAMILY RESTAURANT LLC=96945.63",
+      "got": "SIMON FAMILY RESTAURANT LLC=96945.63",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank5",
+      "expected": "FERGUSON LAUNDROMAT LLC=95687.97",
+      "got": "FERGUSON LAUNDROMAT LLC=95687.97",
+      "ok": true
+    },
+    {
+      "question": "G14",
+      "metric": "avg_days_to_close",
+      "expected": 15.3,
+      "got": "15.3",
+      "ok": true
+    },
+    {
+      "question": "G15",
+      "metric": "loans_90_plus",
+      "expected": 85,
+      "got": "85",
+      "ok": true
+    },
+    {
+      "question": "G15",
+      "metric": "principal_usd",
+      "expected": 6994765.6,
+      "got": "6994765.6",
+      "ok": true
+    }
+  ],
+  "risk": {
+    "queue_size": 472,
+    "by_pattern_type": {
+      "CASH_INTENSIVE_LEGITIMATE": {
+        "patterns": 10,
+        "in_queue": 2,
+        "worst_rank": 292,
+        "min_score": 0.0,
+        "max_score": 25.0,
+        "all_expected_codes_fired": 10
+      },
+      "DORMANT_REACTIVATION": {
+        "patterns": 40,
+        "in_queue": 40,
+        "worst_rank": 472,
+        "min_score": 20.0,
+        "max_score": 20.0,
+        "all_expected_codes_fired": 40
+      },
+      "RAPID_IN_OUT": {
+        "patterns": 30,
+        "in_queue": 30,
+        "worst_rank": 330,
+        "min_score": 25.0,
+        "max_score": 25.0,
+        "all_expected_codes_fired": 30
+      },
+      "SINGLE_CORE_STRUCTURING": {
+        "patterns": 15,
+        "in_queue": 15,
+        "worst_rank": 121,
+        "min_score": 35.0,
+        "max_score": 35.0,
+        "all_expected_codes_fired": 15
+      },
+      "XCORE_STRUCTURING": {
+        "patterns": 25,
+        "in_queue": 25,
+        "worst_rank": 25,
+        "min_score": 70.0,
+        "max_score": 100.0,
+        "all_expected_codes_fired": 25
+      }
+    },
+    "xcs_in_top_10pct": 25,
+    "xcs_total": 25,
+    "xcs_with_3plus_expected_codes": 25,
+    "queue_top": {
+      "name": "DEBORAH SANFORD",
+      "priority": 100.0,
+      "reasons": "XCORE_CASH_30D; CTR_AGGREGATION_MISSED; NEAR_THRESHOLD_CASH"
+    },
+    "d05_expected": "Deborah Sanford",
+    "ctr_missed_days": 8,
+    "d02_expected": 8
+  }
+}

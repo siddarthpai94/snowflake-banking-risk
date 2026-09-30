@@ -1,10 +1,11 @@
-"""Run the Snowflake Silver SQL locally on DuckDB and score it against ground truth.
+"""Run the Snowflake Silver and Gold SQL locally on DuckDB and score it against ground truth.
 
   python scripts/local_duckdb.py --data data/out/demo
 
 This is a pre-flight check, not a substitute for running in Snowflake: the same
-SQL files are translated with a handful of dialect shims (see TRANSLATIONS and
-MACROS). Results are written to tests/results/er_eval_<dataset>.json.
+SQL files are translated with a handful of dialect shims (see translate() and
+MACROS). Results are written to tests/results/er_eval_<dataset>.json (F2) and
+tests/results/risk_eval_<dataset>.json (golden answers from Gold, and F4).
 """
 import argparse
 import json
@@ -22,6 +23,7 @@ from data_gen.schemas import ALL_TABLES  # noqa: E402
 
 SILVER_FILES = ["20_reference.sql", "21_customer_std.sql", "22_match_candidates.sql",
                 "23_party_resolution.sql", "24_dq_exceptions.sql"]
+GOLD_FILES = ["30_config.sql", "31_gold_core.sql", "32_risk_engine.sql"]
 
 # Snowflake functions DuckDB lacks, defined as macros with Snowflake semantics
 MACROS = [
@@ -32,7 +34,25 @@ MACROS = [
     "CREATE OR REPLACE MACRO regexp_replace_all(s, p, r) AS regexp_replace(s, p, r, 'g')",
     "CREATE OR REPLACE MACRO editdistance(a, b) AS levenshtein(a, b)",
 ]
-DATE_FMT = {"YYYYMMDD": "%Y%m%d", "MM/DD/YYYY": "%m/%d/%Y", "YYYY-MM-DD": "%Y-%m-%d", "YYYY/MM/DD": "%Y/%m/%d"}
+DATE_FMT = {"YYYYMMDD": "%Y%m%d", "MM/DD/YYYY": "%m/%d/%Y", "YYYY-MM-DD": "%Y-%m-%d", "YYYY/MM/DD": "%Y/%m/%d",
+            "YYYYMMDDHH24MISS": "%Y%m%d%H%M%S", 'YYYY-MM-DD"T"HH24:MI:SS': "%Y-%m-%dT%H:%M:%S"}
+
+
+def rewrite_calls(sql: str, fname: str, fn) -> str:
+    """Rewrite every fname(arg1, arg2) call, allowing nested parentheses in arg1."""
+    out, i, pat = [], 0, re.compile(rf"\b{fname}\(", re.I)
+    while (m := pat.search(sql, i)):
+        out.append(sql[i:m.start()])
+        depth, j = 1, m.end()
+        while depth:
+            depth += {"(": 1, ")": -1}.get(sql[j], 0)
+            j += 1
+        inner = sql[m.end():j - 1]
+        arg, fmt = re.match(r"(.*),\s*'([^']+)'\s*$", inner, re.S).groups()
+        out.append(fn(rewrite_calls(arg, fname, fn), fmt))
+        i = j
+    out.append(sql[i:])
+    return "".join(out)
 
 
 def translate(sql: str) -> str:
@@ -41,8 +61,10 @@ def translate(sql: str) -> str:
                  r"COMMENT\s*=\s*'(?:[^']|'')*'\s+AS", r"CREATE OR REPLACE TABLE \1 AS", sql)
     sql = re.sub(r"\)\s*COMMENT\s*=\s*'(?:[^']|'')*'\s*;", ");", sql)
     sql = re.sub(r"\bREGEXP_REPLACE\(", "regexp_replace_all(", sql)
-    sql = re.sub(r"TRY_TO_DATE\(([^,()]+),\s*'([^']+)'\)",
-                 lambda m: f"TRY_STRPTIME({m.group(1)}, '{DATE_FMT[m.group(2)]}')::DATE", sql)
+    sql = rewrite_calls(sql, "TRY_TO_DATE", lambda a, f: f"TRY_STRPTIME({a}, '{DATE_FMT[f]}')::DATE")
+    sql = rewrite_calls(sql, "TRY_TO_TIMESTAMP", lambda a, f: f"TRY_STRPTIME({a}, '{DATE_FMT[f]}')")
+    sql = re.sub(r"LISTAGG\((.+?),\s*('[^']*')\)\s*WITHIN GROUP\s*\(ORDER BY ([^)]+)\)",
+                 r"string_agg(\1, \2 ORDER BY \3)", sql)
     sql = sql.replace("CURRENT_DATE()", "CURRENT_DATE")
     return sql
 
@@ -61,13 +83,25 @@ def load_bronze(con, data: Path):
         """)
 
 
-def run_silver(con):
+def run_files(con, folder, names):
     for m in MACROS:
         con.execute(m)
-    for name in SILVER_FILES:
-        sql = translate((REPO / "sql" / "20_silver" / name).read_text())
+    for name in names:
+        sql = translate((REPO / "sql" / folder / name).read_text())
         for stmt in [s for s in sql.split(";\n") if s.strip()]:
-            con.execute(stmt)
+            try:
+                con.execute(stmt)
+            except Exception as e:
+                raise RuntimeError(f"{folder}/{name} failed:\n{stmt[:400]}\n{e}") from e
+
+
+def run_silver(con):
+    run_files(con, "20_silver", SILVER_FILES)
+
+
+def run_gold(con):
+    con.execute("CREATE SCHEMA IF NOT EXISTS gold")
+    run_files(con, "30_gold", GOLD_FILES)
 
 
 def evaluate(con, data: Path):
@@ -129,6 +163,89 @@ def evaluate(con, data: Path):
     }
 
 
+def golden_check(con, data: Path):
+    """Run sql/30_gold/92_golden_check.sql and compare every value with golden_answers.json."""
+    got = con.execute(translate((REPO / "sql" / "30_gold" / "92_golden_check.sql").read_text()).strip().rstrip(";")).df()
+    got = {(r.question_id, r.metric): r.value for r in got.itertuples()}
+    gold = {q["id"]: q["answer"] for q in json.loads((data / "ground_truth" / "golden_answers.json").read_text())["questions"]}
+    expected = {("G01", "core_a_records"): gold["G01"]["core_a_records"], ("G01", "core_b_records"): gold["G01"]["core_b_records"],
+                ("G02", "unique_customers"): gold["G02"]["unique_customers"], ("G03", "alerts"): gold["G03"]["alerts"],
+                ("G04", "false_positive_rate_pct"): gold["G04"]["false_positive_rate_pct"],
+                ("G06", "open_over_30_days"): gold["G06"]["open_over_30_days"], ("G06", "open_total"): gold["G06"]["open_total"],
+                ("G07", "cash_deposits_usd"): gold["G07"]["cash_deposits_usd"],
+                ("G08", "cash_withdrawals_usd"): gold["G08"]["cash_withdrawals_usd"],
+                ("G09", "loan_to_deposit_pct"): gold["G09"]["loan_to_deposit_pct"],
+                ("G10", "cre_to_capital_pct"): gold["G10"]["cre_to_capital_pct"],
+                ("G11", "core_a_deposits_usd"): gold["G11"]["core_a_deposits_usd"],
+                ("G11", "core_b_deposits_usd"): gold["G11"]["core_b_deposits_usd"],
+                ("G12", "dormant_accounts"): gold["G12"]["dormant_accounts"],
+                ("G14", "avg_days_to_close"): gold["G14"]["avg_days_to_close"],
+                ("G15", "loans_90_plus"): gold["G15"]["loans_90_plus"], ("G15", "principal_usd"): gold["G15"]["principal_usd"]}
+    for i, b in enumerate(gold["G05"]["top3"], 1):
+        expected[("G05", f"rank{i}")] = f"{b['branch']}={b['alerts']}"
+    for i, c in enumerate(gold["G13"]["top5"], 1):
+        expected[("G13", f"rank{i}")] = f"{c['name'].upper()}={c['cash_deposits_usd']}"
+    rows = []
+    for k, want in sorted(expected.items()):
+        have = got.get(k)
+        if k == ("G02", "unique_customers"):      # depends on entity resolution; tolerance 0.5%
+            ok = have is not None and abs(float(have) - want) / want <= 0.005
+        elif isinstance(want, (int, float)):
+            ok = have is not None and abs(float(have) - float(want)) < 0.006
+        else:
+            name_w, n_w = want.rsplit("=", 1)
+            name_h, n_h = (have or "=nan").rsplit("=", 1)
+            ok = name_h == name_w and abs(float(n_h) - float(n_w)) < 0.006
+        rows.append({"question": k[0], "metric": k[1], "expected": want, "got": have, "ok": bool(ok)})
+    return rows
+
+
+def evaluate_risk(con):
+    """DuckDB version of sql/30_gold/91_eval_risk.sql: one row per injected pattern."""
+    df = con.execute("""
+        WITH pat AS (SELECT pattern_id, pattern_type, expected_reason_codes AS expected,
+                            unnest(string_split(cores, ';')) AS core, unnest(string_split(customer_refs, ';')) AS cref
+                       FROM eval.GT_INJECTED_PATTERNS),
+             pp AS (SELECT DISTINCT pat.pattern_id, pat.pattern_type, pat.expected, x.party_id
+                      FROM pat JOIN silver.PARTY_XREF x ON x.record_id = pat.core || ':' || pat.cref),
+             best AS (SELECT party_id, MIN(queue_rank) AS queue_rank, MAX(queue_size) AS queue_size
+                        FROM gold.ALERT_QUEUE GROUP BY party_id),
+             fired AS (SELECT party_id, string_agg(rule_code, ';' ORDER BY rule_code) AS fired
+                         FROM gold.RISK_SIGNAL GROUP BY party_id)
+        SELECT pp.pattern_id, pp.pattern_type, pp.party_id, COALESCE(s.risk_score, 0) AS risk_score,
+               b.queue_rank, b.queue_size, f.fired, pp.expected
+          FROM pp LEFT JOIN gold.RISK_SCORE s ON s.party_id = pp.party_id
+          LEFT JOIN best b ON b.party_id = pp.party_id LEFT JOIN fired f ON f.party_id = pp.party_id
+         ORDER BY pp.pattern_id""").df()
+    df["fired"] = df["fired"].fillna("")
+    df["n_expected"] = [0 if e.startswith("EXPECTED_") else len(e.split(";")) for e in df.expected]
+    df["n_expected_fired"] = [0 if e.startswith("EXPECTED_") else len(set(e.split(";")) & set(f.split(";")))
+                              for e, f in zip(df.expected, df.fired)]
+    return df
+
+
+def risk_summary(con, data: Path):
+    df = evaluate_risk(con)
+    qsize = int(con.execute("SELECT COUNT(*) FROM gold.ALERT_QUEUE").fetchone()[0])
+    top = con.execute("SELECT display_name, priority_score, reasons FROM gold.ALERT_QUEUE WHERE queue_rank = 1").fetchone()
+    demo = {q["id"]: q["answer"] for q in json.loads((data / "ground_truth" / "demo_answers.json").read_text())["questions"]}
+    ctr_days = int(con.execute("SELECT COALESCE(SUM(evidence_count), 0) FROM gold.RISK_SIGNAL "
+                               "WHERE rule_code = 'CTR_AGGREGATION_MISSED'").fetchone()[0])
+    by_type = {}
+    for t, g in df.groupby("pattern_type"):
+        by_type[t] = {"patterns": len(g), "in_queue": int(g.queue_rank.notna().sum()),
+                      "worst_rank": None if g.queue_rank.isna().all() else int(g.queue_rank.max()),
+                      "min_score": float(g.risk_score.min()), "max_score": float(g.risk_score.max()),
+                      "all_expected_codes_fired": int((g.n_expected_fired == g.n_expected).sum())}
+    xcs = df[df.pattern_type == "XCORE_STRUCTURING"]
+    return {"queue_size": qsize, "by_pattern_type": by_type,
+            "xcs_in_top_10pct": int((xcs.queue_rank <= 0.10 * qsize).sum()), "xcs_total": len(xcs),
+            "xcs_with_3plus_expected_codes": int((xcs.n_expected_fired >= 3).sum()),
+            "queue_top": {"name": top[0], "priority": float(top[1]), "reasons": top[2]},
+            "d05_expected": demo["D05"]["name"],
+            "ctr_missed_days": ctr_days, "d02_expected": demo["D02"]["count"]}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default=str(REPO / "data" / "out" / "demo"))
@@ -143,11 +260,19 @@ def main():
     run_silver(con)
     t2 = time.time()
     res = evaluate(con, data)
-    res["seconds"] = {"load_bronze": round(t1 - t0, 1), "silver": round(t2 - t1, 1)}
+    run_gold(con)
+    t3 = time.time()
+    res["seconds"] = {"load_bronze": round(t1 - t0, 1), "silver": round(t2 - t1, 1), "gold_and_risk": round(t3 - t2, 1)}
     out = REPO / "tests" / "results" / f"er_eval_{data.name}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(res, indent=2, default=int) + "\n")
-    print(json.dumps(res, indent=2, default=int))
+    golden = golden_check(con, data)
+    risk = {"dataset": data.name, "engine": "duckdb " + duckdb.__version__ + " (local pre-flight)",
+            "golden_questions_ok": f"{sum(r['ok'] for r in golden)}/{len(golden)}", "golden": golden,
+            "risk": risk_summary(con, data)}
+    (out.parent / f"risk_eval_{data.name}.json").write_text(json.dumps(risk, indent=2, default=str) + "\n")
+    print(json.dumps({k: v for k, v in res.items() if not k.endswith("examples")}, indent=2, default=int))
+    print(json.dumps({k: v for k, v in risk.items() if k != "golden"}, indent=2, default=str))
 
 
 if __name__ == "__main__":

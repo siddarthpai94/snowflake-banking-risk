@@ -36,6 +36,15 @@ thresholds:
   rapid_in_out_hours: 48
   rapid_in_out_min_inflow_usd: 25000
   alert_sla_days: 30
+  kyc_cash_multiple: 3                     # observed 30-day cash above this multiple of expected monthly cash
+  kyc_cash_min_usd: 10000                  # ...and above this floor, before KYC_MISMATCH fires
+  kyc_consistent_max_multiple: 1.5         # cash up to this multiple of expected counts as KYC-consistent (mitigating)
+
+risk_queue:
+  window_days: 30                          # look-back for cash rules
+  pattern_lookback_days: 184               # look-back for rapid in-out and dormant reactivation
+  min_score_for_new_alert: 20              # engine opens a new alert at or above this score
+  legacy_score_weight: 0.6                 # legacy scores are uncalibrated, so they count for less
 
 matching:
   auto_link_min_score: 0.95
@@ -46,6 +55,7 @@ matching:
     max_records_per_party: 5
 
 # F4 risk engine. Each rule returns a reason code; the weighted sum is the score (0-100).
+# Negative weights are mitigating factors; they are shown as evidence but never as top reasons.
 risk_rules:
   - code: XCORE_CASH_30D
     description: "Combined cash deposits across both cores exceed the 30-day threshold"
@@ -68,6 +78,9 @@ risk_rules:
   - code: KYC_INCONSISTENT_ACROSS_CORES
     description: "Occupation or business differs between the two cores' KYC records"
     weight: 10
+  - code: KYC_CONSISTENT_CASH
+    description: "Mitigating: cash activity is within the expected monthly cash in the KYC profile"
+    weight: -20
 
 report:
   approval_required: true          # F7: no output is final without an approval row

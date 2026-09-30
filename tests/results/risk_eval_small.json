@@ -1,0 +1,238 @@
+{
+  "dataset": "small",
+  "engine": "duckdb 1.5.6 (local pre-flight)",
+  "golden_questions_ok": "25/25",
+  "golden": [
+    {
+      "question": "G01",
+      "metric": "core_a_records",
+      "expected": 1660,
+      "got": "1660",
+      "ok": true
+    },
+    {
+      "question": "G01",
+      "metric": "core_b_records",
+      "expected": 930,
+      "got": "930",
+      "ok": true
+    },
+    {
+      "question": "G02",
+      "metric": "unique_customers",
+      "expected": 2390,
+      "got": "2392",
+      "ok": true
+    },
+    {
+      "question": "G03",
+      "metric": "alerts",
+      "expected": 12,
+      "got": "12",
+      "ok": true
+    },
+    {
+      "question": "G04",
+      "metric": "false_positive_rate_pct",
+      "expected": 95.6,
+      "got": "95.6",
+      "ok": true
+    },
+    {
+      "question": "G05",
+      "metric": "rank1",
+      "expected": "A01=8",
+      "got": "A01=8",
+      "ok": true
+    },
+    {
+      "question": "G05",
+      "metric": "rank2",
+      "expected": "A04=6",
+      "got": "A04=6",
+      "ok": true
+    },
+    {
+      "question": "G05",
+      "metric": "rank3",
+      "expected": "Pellbrook Downtown=6",
+      "got": "Pellbrook Downtown=6",
+      "ok": true
+    },
+    {
+      "question": "G06",
+      "metric": "open_over_30_days",
+      "expected": 2,
+      "got": "2",
+      "ok": true
+    },
+    {
+      "question": "G06",
+      "metric": "open_total",
+      "expected": 13,
+      "got": "13",
+      "ok": true
+    },
+    {
+      "question": "G07",
+      "metric": "cash_deposits_usd",
+      "expected": 1185387.38,
+      "got": "1185387.38",
+      "ok": true
+    },
+    {
+      "question": "G08",
+      "metric": "cash_withdrawals_usd",
+      "expected": 355552.01,
+      "got": "355552.01",
+      "ok": true
+    },
+    {
+      "question": "G09",
+      "metric": "loan_to_deposit_pct",
+      "expected": 65.2,
+      "got": "65.2",
+      "ok": true
+    },
+    {
+      "question": "G10",
+      "metric": "cre_to_capital_pct",
+      "expected": 13.9,
+      "got": "13.9",
+      "ok": true
+    },
+    {
+      "question": "G11",
+      "metric": "core_a_deposits_usd",
+      "expected": 108940097.87,
+      "got": "108940097.87",
+      "ok": true
+    },
+    {
+      "question": "G11",
+      "metric": "core_b_deposits_usd",
+      "expected": 53062664.36,
+      "got": "53062664.36",
+      "ok": true
+    },
+    {
+      "question": "G12",
+      "metric": "dormant_accounts",
+      "expected": 27,
+      "got": "27",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank1",
+      "expected": "MATTHEWS DINER LLC=78715.64",
+      "got": "MATTHEWS DINER LLC=78715.64",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank2",
+      "expected": "FRY CAR WASH LLC=73043.7",
+      "got": "FRY CAR WASH LLC=73043.7",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank3",
+      "expected": "MONTGOMERY LIQUOR STORE INC=70989.76",
+      "got": "MONTGOMERY LIQUOR STORE INC=70989.76",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank4",
+      "expected": "DONALD HUERTA=56590.0",
+      "got": "DONALD HUERTA=56590.0",
+      "ok": true
+    },
+    {
+      "question": "G13",
+      "metric": "rank5",
+      "expected": "LARRY SPENCE=56370.0",
+      "got": "LARRY SPENCE=56370.0",
+      "ok": true
+    },
+    {
+      "question": "G14",
+      "metric": "avg_days_to_close",
+      "expected": 15.5,
+      "got": "15.5",
+      "ok": true
+    },
+    {
+      "question": "G15",
+      "metric": "loans_90_plus",
+      "expected": 6,
+      "got": "6",
+      "ok": true
+    },
+    {
+      "question": "G15",
+      "metric": "principal_usd",
+      "expected": 689570.52,
+      "got": "689570.52",
+      "ok": true
+    }
+  ],
+  "risk": {
+    "queue_size": 32,
+    "by_pattern_type": {
+      "CASH_INTENSIVE_LEGITIMATE": {
+        "patterns": 3,
+        "in_queue": 1,
+        "worst_rank": 22,
+        "min_score": 0.0,
+        "max_score": 25.0,
+        "all_expected_codes_fired": 3
+      },
+      "DORMANT_REACTIVATION": {
+        "patterns": 4,
+        "in_queue": 4,
+        "worst_rank": 32,
+        "min_score": 20.0,
+        "max_score": 20.0,
+        "all_expected_codes_fired": 4
+      },
+      "RAPID_IN_OUT": {
+        "patterns": 4,
+        "in_queue": 4,
+        "worst_rank": 23,
+        "min_score": 25.0,
+        "max_score": 25.0,
+        "all_expected_codes_fired": 4
+      },
+      "SINGLE_CORE_STRUCTURING": {
+        "patterns": 3,
+        "in_queue": 3,
+        "worst_rank": 11,
+        "min_score": 35.0,
+        "max_score": 35.0,
+        "all_expected_codes_fired": 3
+      },
+      "XCORE_STRUCTURING": {
+        "patterns": 5,
+        "in_queue": 5,
+        "worst_rank": 5,
+        "min_score": 70.0,
+        "max_score": 100.0,
+        "all_expected_codes_fired": 5
+      }
+    },
+    "xcs_in_top_10pct": 3,
+    "xcs_total": 5,
+    "xcs_with_3plus_expected_codes": 5,
+    "queue_top": {
+      "name": "ALEXANDER BRADSHAW",
+      "priority": 100.0,
+      "reasons": "XCORE_CASH_30D; CTR_AGGREGATION_MISSED; NEAR_THRESHOLD_CASH"
+    },
+    "d05_expected": "Alexander Bradshaw",
+    "ctr_missed_days": 2,
+    "d02_expected": 2
+  }
+}

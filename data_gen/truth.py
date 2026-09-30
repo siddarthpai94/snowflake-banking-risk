@@ -166,7 +166,11 @@ def compute(ctx):
                                  "Cash in and cash out are aggregated separately.",
                                  "Core A and Core B transactions must be aggregated together after the acquisition.",
                                  "A daily cross-core aggregation report runs until conversion."]}
-    top = max(xcs, key=lambda p: (len(p["expected_reason_codes"].split(";")), float(p["total_amount_usd"])))
+    # Highest risk = largest total of configured rule weights for the expected reason codes (the engine's
+    # uncapped score), then the largest structured amount. Weights come from config/bank_demo.yaml.
+    weight = {r["code"]: r["weight"] for r in cfg["risk_rules"]}
+    top = max(xcs, key=lambda p: (sum(weight[c] for c in p["expected_reason_codes"].split(";")),
+                                  float(p["total_amount_usd"])))
     ans["D05"] = {"person_id": top["person_id"], "name": names.get(top["person_id"]),
                   "must_mention": [top["detail"], "KYC expected cash", "both cores"],
                   "pattern_id": top["pattern_id"],

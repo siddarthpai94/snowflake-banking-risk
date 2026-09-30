@@ -11,11 +11,11 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 | Feature | Status |
 | --- | --- |
 | F1 Synthetic two-core bank generator | **Done**: 50,000 customer records, 80,000 accounts, 20,000 loans, 2.07M transactions, 1,502 alerts, 2,873 investigator notes, 2,541 KYC summaries, BSA policy PDF, ground truth |
-| F2 Canonical model + entity resolution | **Silver done and measured locally** (see results); Gold canonical tables next |
-| F3 Semantic view | Spec and 15 golden questions with expected answers ready (`docs/spec.md`) |
-| F4 Risk engine | Rules and weights in `config/bank_demo.yaml`; expected reason codes in ground truth |
+| F2 Canonical model + entity resolution | **Silver done and verified in Snowflake** (matches DuckDB exactly). **Gold built**: all 15 golden questions answered correctly from Gold (DuckDB; Snowflake run next) |
+| F3 Semantic view | Spec and 15 golden questions ready; golden answers already reproduced by `sql/30_gold/92_golden_check.sql`. No AI: metric views plus a question picker |
+| F4 Risk engine | **Built** (`sql/30_gold/32_risk_engine.sql`): 8 transparent rules, weighted score, reason codes, evidence and a ranked queue. All 25 cross-core structurers rank 1-25 of 472 (DuckDB; Snowflake run next) |
 | F5 Document search | Notes, KYC summaries and the policy PDF generated; page index recorded for citations |
-| F6 Agent, F7 Outputs, F8 App, F9 CoCo skill | Not started (Friday-Saturday). F9 test fixture (Core C) and target mapping format ready |
+| F6 Router, F7 Outputs, F8 App, F9 CoCo skill | Not started (Friday-Saturday). Built without AI: rule-based router, template narratives with approval, Streamlit. F9 test fixture (Core C) and target mapping format ready |
 
 ## Setup (8 commands)
 
@@ -23,8 +23,8 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 git clone <repo-url> sahasranshu-risk-copilot && cd sahasranshu-risk-copilot
 pip install -r requirements.txt
 python -m data_gen.generate                        # about 65 s; writes data/out/demo (58 MB)
-python -m pytest tests -q                          # 26 acceptance tests, about 15 s
-python scripts/local_duckdb.py --data data/out/demo # optional pre-flight of the Silver SQL on DuckDB
+python -m pytest tests -q                          # 39 acceptance tests, about 15 s
+python scripts/local_duckdb.py --data data/out/demo # optional pre-flight of the Silver and Gold SQL on DuckDB
 snow connection add                                # once: your Snowflake trial account
 scripts/load_to_snowflake.sh --setup --with-eval   # roles, warehouse, stage, Bronze load, reconciliation
 snow sql -f sql/00_setup/90_capability_check.sql   # confirms Cortex features in your region
@@ -32,11 +32,13 @@ snow sql -f sql/00_setup/90_capability_check.sql   # confirms Cortex features in
 
 Then build Silver in order: `20_reference.sql`, `21_customer_std.sql`, `22_match_candidates.sql`, `23_party_resolution.sql`, `24_dq_exceptions.sql` (each with `snow sql -f`).
 
+Then Gold and the risk engine: `30_gold/30_config.sql`, `31_gold_core.sql`, `32_risk_engine.sql`. Check with `90_customer_360_proof.sql`, `91_eval_risk.sql` and `92_golden_check.sql`. If you change `config/bank_demo.yaml`, run `python scripts/emit_config_sql.py` and then `30_config.sql` again.
+
 The same profile and seed always produce byte-identical files; `data/out/demo/manifest.json` lists a SHA-256 for every file.
 
 ## Results so far
 
-These were measured on DuckDB running the same Silver SQL through `scripts/local_duckdb.py`. **They have not yet been measured in Snowflake**, and the matching assertions must be re-run there.
+The matching results below were first measured on DuckDB through `scripts/local_duckdb.py`, then **reproduced exactly in Snowflake** on the demo dataset (`sql/20_silver/90_eval_matching.sql`).
 
 The matching rules were tuned on the small dev dataset (seed 7). They were then checked on a holdout dataset (seed 20261015) that no rule was tuned on.
 
@@ -52,6 +54,34 @@ The matching rules were tuned on the small dev dataset (seed 7). They were then 
 | Injected data-quality issues found | 440 of 440, no false alarms | 440 of 440, no false alarms |
 
 The F2 acceptance test in the build plan (at least 95% of duplicates matched) passes. One matching rule, a date-of-birth plus ZIP blocking key, was added after inspecting misses on the demo dataset. That is why the holdout column is the honest measure.
+
+## Risk engine results (F4)
+
+No AI is used. Each rule is a SQL query with thresholds from `config/bank_demo.yaml`; the score is the sum of the weights of the rules that fired, kept within 0 to 100. Every fired rule carries a sentence of evidence with amounts and dates.
+
+| Rule | Weight | Fires when |
+| --- | --- | --- |
+| XCORE_CASH_30D | 35 | cash deposits in both cores total over $50,000 in the last 30 days |
+| CTR_AGGREGATION_MISSED | 30 | same-day cash across both cores is over $10,000 with no CTR filed |
+| RAPID_IN_OUT | 25 | at least 90% of a wire or ACH inflow of $25,000 or more leaves within 48 hours |
+| NEAR_THRESHOLD_CASH | 20 | 4 or more cash deposits of $7,000 to $9,999 within any 30-day window |
+| DORMANT_REACTIVATION | 20 | an account dormant over 365 days receives $10,000 or more within 30 days of reactivation |
+| KYC_MISMATCH | 15 | 30-day cash is over 3 times the KYC expected monthly cash (and over $10,000) |
+| KYC_INCONSISTENT_ACROSS_CORES | 10 | the two cores' KYC files give different occupations |
+| KYC_CONSISTENT_CASH | -20 | mitigating: 30-day cash is within 1.5 times the KYC expected monthly cash |
+
+The queue (`GOLD.ALERT_QUEUE`) combines open legacy alerts with new engine alerts for customers scoring 20 or more. Legacy scores count at 0.6 because they are uncalibrated. Ties are broken by the uncapped weight total, then the largest amount.
+
+| Injected pattern | Demo (seed 20260930) | Holdout (seed 20261015) |
+| --- | --- | --- |
+| Cross-core structurers in the queue top 10% | **25 of 25** (ranks 1-25 of 472) | **25 of 25** (ranks 1-25 of 431) |
+| Patterns firing every expected reason code | 110 of 110 | 110 of 110 |
+| Single-core structurers, worst rank | 121 | 93 |
+| Legitimate cash businesses in the queue | 2 of 10 (low, rank 292 or below) | 0 of 10 |
+| CTR aggregation misses found (D02) | 8 of 8 | 8 of 8 |
+| Top of queue matches D05 | yes (Deborah Sanford) | yes |
+
+Rapid-movement and dormant-reactivation patterns enter the queue on one rule each, so they rank below the structurers. That is by design: they are single signals.
 
 ## How the demo question is answered
 
@@ -70,8 +100,8 @@ data_gen/                  synthetic cores, documents and ground truth (F1)
 sql/00_setup/              roles, warehouse, schemas, stage, file format, capability check
 sql/10_bronze/             Bronze tables and COPY (generated from data_gen/schemas.py), load reconciliation
 sql/20_silver/             standardisation, entity resolution, review queue, data-quality exceptions (F2)
-sql/30_gold/               canonical banking model (next)
-semantic/ risk/ search/ agent/ outputs/ app/   F3-F8 (next)
+sql/30_gold/               canonical banking model, config tables, risk engine and queue (F2, F4, F14)
+semantic/ risk/ search/ agent/ outputs/ app/   F3, F5-F8 (next)
 coco_skills/onboard_core/  custom CoCo skill (F9)
 scripts/                   Bronze SQL generator, Snowflake loader, local DuckDB pre-flight
 tests/                     acceptance tests; tests/results/ holds measured results
@@ -80,7 +110,9 @@ docs/                      one-page spec, CoCo usage log
 
 ## Known limits
 
-- The Silver SQL is written for Snowflake but so far has only run on DuckDB through a translation layer. Snowflake's `JAROWINKLER_SIMILARITY` returns an integer, so borderline scores may round differently.
+- The Gold and risk-engine SQL has so far run only on DuckDB through a translation layer; the Snowflake run is next. (The Silver SQL gave identical results on both.)
+- The risk engine's thresholds were set before looking at the demo data, but two changes followed inspection of the small dev dataset: near-threshold cash uses any 30-day window, and the mitigating KYC rule allows 1.5 times the expected cash. The holdout column is the honest measure.
+- One ground-truth definition was aligned with the engine: the "highest-risk customer" (D05) is now chosen by configured rule weights rather than by counting reason codes. The demo answer did not change.
 - The matcher uses a standard nickname dictionary. The generator draws nickname variations from the same list, which flatters recall on nickname cases. Real deployments should use a larger dictionary.
 - Balances are a single as-of snapshot; there is no history table yet.
 - The capital figure is a configured input, because the synthetic data has no balance sheet.
