@@ -15,7 +15,8 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 | F3 Governed questions (no AI) | **Built**: metric views, a catalogue of 18 reviewed questions and a keyword matcher. 15 of 15 golden questions and D01-D03 correct; matcher 19 of 20 on unseen rewordings. Try `python scripts/ask.py "how many alerts last month"` |
 | F4 Risk engine | **Built** (`sql/30_gold/32_risk_engine.sql`): 8 transparent rules, weighted score, reason codes, evidence and a ranked queue. All 25 cross-core structurers rank 1-25 of 472; **F4 acceptance PASS in Snowflake** |
 | F5 Document search (no AI) | **Built**: BM25 keyword search over 32 policy sections, 2,873 notes and 2,541 KYC summaries, every hit with a citation. D04 finds section 4.2, page 3; 10 of 12 policy questions correct first time. Try `python -m search.search "..."` |
-| F6 Router, F7 Outputs, F8 App, F9 CoCo skill | Not started (Friday-Saturday). Built without AI: rule-based router, template narratives with approval, Streamlit. F9 test fixture (Core C) and target mapping format ready |
+| F6 Router (no AI) | **Built**: rule-based router (catalogue, search, customer view, narrative, clarify) with the rule shown on every answer and an audit log. D01-D05 correct three runs in a row. Try `python scripts/copilot.py "..."` |
+| F7 Outputs, F8 App, F9 CoCo skill | Next (Saturday). F7: template narratives with approval; F8: Streamlit; F9 test fixture (Core C) and target mapping format ready |
 
 ## Setup (8 commands)
 
@@ -23,7 +24,7 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 git clone <repo-url> sahasranshu-risk-copilot && cd sahasranshu-risk-copilot
 pip install -r requirements.txt
 python -m data_gen.generate                        # about 65 s; writes data/out/demo (58 MB)
-python -m pytest tests -q                          # 72 acceptance tests, about 15 s
+python -m pytest tests -q                          # 78 acceptance tests, about 15 s
 python scripts/local_duckdb.py --data data/out/demo # optional pre-flight of the Silver and Gold SQL on DuckDB
 snow connection add                                # once: your Snowflake trial account
 scripts/load_to_snowflake.sh --setup --with-eval   # roles, warehouse, stage, Bronze load, reconciliation
@@ -37,6 +38,8 @@ Then Gold and the risk engine: `30_gold/30_config.sql`, `31_gold_core.sql`, `32_
 Then the semantic layer: `40_semantic/40_metric_views.sql` and `41_question_catalog.sql`. Ask questions with `python scripts/ask.py "..."`.
 
 Then document search: `50_search/50_policy_chunks.sql` and `51_doc_chunk.sql`. Search with `python -m search.search "..."`.
+
+Then the audit log: `60_agent/60_audit.sql`. Ask anything with `python scripts/copilot.py "..."`.
 
 If you change `config/bank_demo.yaml`, run `python scripts/emit_config_sql.py` and then `30_config.sql` again.
 
@@ -109,9 +112,11 @@ sql/20_silver/             standardisation, entity resolution, review queue, dat
 sql/30_gold/               canonical banking model, config tables, risk engine and queue (F2, F4, F14)
 sql/40_semantic/           metric views and question catalogue (F3)
 sql/50_search/             policy sections and the searchable document table (F5)
+sql/60_agent/              audit log of every question (F6)
 semantic/                  question catalogue and keyword matcher (F3)
 search/                    policy PDF extraction and BM25 search (F5)
-risk/ agent/ outputs/ app/ F6-F8 (next)
+agent/                     rule-based router and answer builder (F6)
+risk/ outputs/ app/        F7-F8 (next)
 coco_skills/onboard_core/  custom CoCo skill (F9)
 scripts/                   Bronze SQL generator, Snowflake loader, local DuckDB pre-flight
 tests/                     acceptance tests; tests/results/ holds measured results

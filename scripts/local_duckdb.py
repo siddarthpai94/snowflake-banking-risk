@@ -26,6 +26,7 @@ SILVER_FILES = ["20_reference.sql", "21_customer_std.sql", "22_match_candidates.
 GOLD_FILES = ["30_config.sql", "31_gold_core.sql", "32_risk_engine.sql"]
 SEMANTIC_FILES = ["40_metric_views.sql", "41_question_catalog.sql"]
 SEARCH_FILES = ["50_policy_chunks.sql", "51_doc_chunk.sql"]
+AGENT_FILES = ["60_audit.sql"]
 
 # Snowflake functions DuckDB lacks, defined as macros with Snowflake semantics
 MACROS = [
@@ -69,6 +70,7 @@ def translate(sql: str) -> str:
     sql = re.sub(r"LISTAGG\((.+?),\s*('[^']*')\)\s*WITHIN GROUP\s*\(ORDER BY ([^)]+)\)",
                  r"string_agg(\1, \2 ORDER BY \3)", sql)
     sql = sql.replace("CURRENT_DATE()", "CURRENT_DATE")
+    sql = sql.replace("TIMESTAMP_NTZ", "TIMESTAMP")
     return sql
 
 
@@ -114,6 +116,11 @@ def run_semantic(con):
 
 def run_search(con):
     run_files(con, "50_search", SEARCH_FILES)
+
+
+def run_agent(con):
+    con.execute("CREATE SCHEMA IF NOT EXISTS audit")
+    run_files(con, "60_agent", AGENT_FILES)
 
 
 def executor(con):
