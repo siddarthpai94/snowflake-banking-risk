@@ -26,6 +26,7 @@ def app(small_data, tmp_path_factory):
         step(con)
     con.close()
     os.environ["RISK_COPILOT_BACKEND"] = f"duckdb:{db}"
+    os.environ["RISK_COPILOT_MIMIC_SNOWFLAKE"] = "1"      # UPPER CASE column names, as Snowflake returns them
     at = st_testing.AppTest.from_file(str(REPO / "app" / "streamlit_app.py"), default_timeout=120).run()
     golden = {q["id"]: q["answer"] for q in json.loads((out / "ground_truth" / "golden_answers.json").read_text())["questions"]}
     demo = {q["id"]: q["answer"] for q in json.loads((out / "ground_truth" / "demo_answers.json").read_text())["questions"]}

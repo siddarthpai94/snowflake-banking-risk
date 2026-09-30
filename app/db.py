@@ -59,9 +59,17 @@ def _duckdb_executor(path):
         except Exception:
             pass
     run = L.executor(con)
+    mimic = os.getenv("RISK_COPILOT_MIMIC_SNOWFLAKE") == "1"   # tests: return UPPER CASE columns like Snowflake
 
     def execute(sql):
-        return run(sql)
+        df = run(sql)
+        if mimic:
+            from decimal import Decimal
+            df.columns = [str(c).upper() for c in df.columns]
+            for c in df.columns:                             # NUMBER(p,s) arrives as Decimal from the connector
+                if df[c].dtype.kind == "f":
+                    df[c] = df[c].map(lambda v: None if v != v else Decimal(str(v)))
+        return df
     execute.backend = f"DuckDB ({path}, offline)"
     return execute
 
@@ -87,8 +95,9 @@ def get_executor():
 
 
 def numeric(df):
-    """Decimal columns -> float so tables and charts format nicely."""
+    """Lower-case column names (Snowflake returns UPPER CASE) and Decimal columns -> float for display."""
     out = df.copy()
+    out.columns = [str(c).lower() for c in out.columns]
     for c in out.columns:
         if out[c].dtype == object and len(out) and out[c].map(lambda v: hasattr(v, "as_tuple")).any():
             out[c] = out[c].astype(float)
