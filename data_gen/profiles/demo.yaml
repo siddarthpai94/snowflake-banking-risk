@@ -1,0 +1,66 @@
+# Generator profile for the hackathon demo dataset. ALL DATA IS SYNTHETIC.
+# Volumes follow the CoCo build plan (F1). Injection counts are exact.
+
+seed: 20260930
+window_start: "2026-03-01"
+window_end: "2026-08-31"          # also the as-of date
+
+core_a:
+  individuals: 31000
+  businesses: 1000
+  accounts: 52000
+  loans: 13000
+  branches: 12
+core_b:
+  individuals: 17500
+  businesses: 500
+  accounts: 28000
+  loans: 7000
+  branches: 6
+
+# Cross-core duplicate identities: the same real person in both cores.
+# 4,000 / 50,000 customer records = 8% duplicates.
+duplicates:
+  tier_a_clean: 3300      # same tax-id token and DOB; formatting differs
+  tier_b_variant: 550     # nickname, typo or moved address; tax-id token on both
+  tier_c_hard: 150        # tax-id token missing in Core B plus a name or address variation
+
+# Different real people who look alike across the cores. Must never be merged.
+lookalikes:
+  jr_sr_same_address: 60
+  twins: 40
+  same_name_same_dob: 50
+  core_b_token_missing: 40      # of the 150, this many have no tax-id token in Core B
+
+dq_issues:
+  core_a_missing_dob: 250
+  core_a_future_dob: 20
+  core_a_duplicate_acct_no: 10
+  core_b_invalid_zip: 120
+  core_b_orphan_account: 40
+
+organic:
+  dormant_accounts_a: 330
+  dormant_accounts_b: 170
+  legit_reactivations: 60
+  closed_account_pct: 0.06
+  alerts_a: 870
+  alerts_b: 582
+  random_kyc_summaries: 1000
+
+injected:
+  cross_core_structurers: 25        # invisible to either legacy system alone
+  missed_ctr_aggregation_people: 8  # of the 25: same-day cash across cores > $10k
+  kyc_conflict_people: 10           # of the 25: KYC occupation differs between cores
+  single_core_structurers: 15       # visible to one legacy system; open alert exists
+  cash_intensive_businesses: 10     # legitimate high cash; KYC explains it
+  rapid_in_out: 30
+  rapid_in_out_with_alert: 10
+  dormant_reactivation: 40
+  dormant_reactivation_with_alert: 8
+
+core_c:                              # third, differently named schema for the F9 skill test
+  customers: 3000
+  accounts: 5000
+  overlap_with_core_a: 300
+  txns_per_account_month: 2.0

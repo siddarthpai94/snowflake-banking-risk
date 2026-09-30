@@ -1,0 +1,86 @@
+# Core B -> canonical model mapping. Reference output for the F9 onboarding skill.
+# Column names are lower case in Bronze, so expressions quote them.
+source_system: core_b
+label: "Pellbrook legacy core (acquired 2026-06-30)"
+
+customer:
+  bronze_table: BRONZE.CORE_B_PARTY
+  key: party_uuid
+  fields:
+    party_kind: "IFF(\"party_kind\" = 'ORG', 'ORG', 'PERSON')"
+    last_name: "IFF(\"party_kind\" = 'ORG', NULL, TRIM(SPLIT_PART(\"full_name\", ',', 1)))"
+    first_name: "IFF(\"party_kind\" = 'ORG', NULL, SPLIT_PART(TRIM(SPLIT_PART(\"full_name\", ',', 2)), ' ', 1))"
+    middle_initial: "second name token when it is one letter"
+    name_suffix: "JR, SR, II, III or IV when present after the given names"
+    org_name: "IFF(\"party_kind\" = 'ORG', UPPER(TRIM(\"full_name\")), NULL)"
+    birth_date: "TRY_TO_DATE(\"dob\", 'MM/DD/YYYY')"
+    tax_token: "NULLIF(REGEXP_REPLACE(LOWER(TRIM(\"ssn_token\")), '^tkn_', ''), '')"
+    street: "UPPER(TRIM(\"street\"))"
+    city: "UPPER(TRIM(SPLIT_PART(\"city_state_zip\", ',', 1)))"
+    state: "UPPER(SPLIT_PART(TRIM(SPLIT_PART(\"city_state_zip\", ',', 2)), ' ', 1))"
+    zip: "SPLIT_PART(TRIM(SPLIT_PART(\"city_state_zip\", ',', 2)), ' ', 2)"
+    phone: "REGEXP_REPLACE(\"phone_num\", '[^0-9]', '')"
+    email: "LOWER(TRIM(\"email_addr\"))"
+    occupation: "\"employer_or_industry\""
+    risk_rating: "DECODE(\"kyc_risk\", '1', 'LOW', '2', 'LOW', '3', 'MEDIUM', '4', 'HIGH', '5', 'HIGH')"
+    home_branch: "\"home_branch\""
+
+account:
+  bronze_table: BRONZE.CORE_B_DEPOSIT_ACCOUNT
+  key: acct_ref
+  fields:
+    customer_key: "\"party_uuid\""
+    product_type: "DECODE(\"product_name\", 'Everyday Checking', 'CHECKING', 'Business Checking', 'CHECKING', 'Statement Savings', 'SAVINGS', 'Money Market', 'MONEY_MARKET', 'Certificate of Deposit', 'CERTIFICATE')"
+    branch: "\"branch_name\""
+    opened_on: "TRY_TO_DATE(\"opened_on\")"
+    closed_on: "TRY_TO_DATE(\"closed_on\")"
+    status: "\"acct_status\""
+    dormant_since: "TRY_TO_DATE(\"dormant_since\")"
+    reactivated_on: "TRY_TO_DATE(\"reactivated_on\")"
+    balance_usd: "TO_NUMBER(\"ledger_balance\", 38, 2)"
+    rate_pct: "TO_NUMBER(\"rate_pct\", 10, 3)"
+
+loan:
+  bronze_table: BRONZE.CORE_B_LOAN
+  key: note_number
+  fields:
+    customer_key: "\"party_uuid\""
+    loan_type: "DECODE(\"product_name\", 'Auto Loan', 'AUTO', 'Residential Mortgage', 'MORTGAGE', 'Home Equity Line', 'HELOC', 'Personal Loan', 'PERSONAL', 'Commercial Real Estate', 'CRE', 'Commercial & Industrial', 'C_AND_I')"
+    branch: "\"branch_name\""
+    originated_on: "TRY_TO_DATE(\"booked_on\")"
+    matures_on: "TRY_TO_DATE(\"maturity_on\")"
+    original_amount_usd: "TO_NUMBER(\"original_amount\", 38, 2)"
+    principal_usd: "TO_NUMBER(\"principal_outstanding\", 38, 2)"
+    rate_pct: "TO_NUMBER(\"interest_rate_pct\", 10, 3)"
+    cre_category: "CASE WHEN \"collateral_desc\" ILIKE 'Office%' THEN 'OFFICE' WHEN \"collateral_desc\" ILIKE 'Retail%' THEN 'RETAIL' WHEN \"collateral_desc\" ILIKE 'Apartment%' THEN 'MULTIFAMILY' WHEN \"collateral_desc\" ILIKE 'Warehouse%' THEN 'INDUSTRIAL' WHEN \"collateral_desc\" ILIKE 'Construction%' THEN 'CONSTRUCTION' END"
+    owner_occupied: "\"owner_occupied\" = 'true'"
+    days_past_due: "TO_NUMBER(\"days_delinquent\")"
+
+transaction:
+  bronze_table: BRONZE.CORE_B_TXN
+  key: txn_uuid
+  fields:
+    account_key: "\"acct_ref\""
+    posted_at_local: "TO_TIMESTAMP_NTZ(LEFT(\"txn_timestamp\", 19))"
+    txn_type: "DECODE(\"txn_type_desc\", 'Cash Deposit', 'CASH_DEPOSIT', 'Cash Withdrawal', 'CASH_WITHDRAWAL', 'ATM Withdrawal', 'ATM_WITHDRAWAL', 'ACH Credit', 'ACH_CREDIT', 'ACH Debit', 'ACH_DEBIT', 'Incoming Wire', 'WIRE_IN', 'Outgoing Wire', 'WIRE_OUT', 'Check Paid', 'CHECK_PAID', 'Debit Card Purchase', 'CARD_PURCHASE', 'Transfer In', 'TRANSFER_IN', 'Transfer Out', 'TRANSFER_OUT', 'Interest Credit', 'INTEREST')"
+    amount_signed_usd: "IFF(\"dr_cr\" = 'C', 1, -1) * TO_NUMBER(\"amount\", 38, 2)"
+    channel: "DECODE(\"channel_desc\", 'Teller', 'BRANCH', 'ATM', 'ATM', 'Online Banking', 'ONLINE', 'Mobile App', 'MOBILE', 'System', 'SYSTEM')"
+    branch: "NULLIF(\"branch_name\", '')"
+    ctr_filed: "\"ctr_filed\" = 'true'"
+    counterparty: "NULLIF(\"counterparty\", '')"
+    counterparty_institution: "NULLIF(\"counterparty_institution\", '')"
+
+alert:
+  bronze_table: BRONZE.CORE_B_CASE_ALERT
+  key: case_ref
+  fields:
+    customer_key: "\"party_uuid\""
+    account_key: "\"acct_ref\""
+    scenario: "DECODE(\"scenario_name\", 'Large Cash Activity', 'LARGE_CASH', 'Possible Structuring', 'STRUCTURING', 'High Velocity', 'VELOCITY', 'High Risk Geography Wire', 'HIGH_RISK_WIRE', 'Rapid Movement of Funds', 'RAPID_MOVEMENT', 'Dormant Account Activity', 'DORMANT_ACTIVITY')"
+    alert_date: "TO_DATE(LEFT(\"created_at\", 10))"
+    legacy_score: "DECODE(\"priority\", 'P1', 90, 'P2', 75, 'P3', 50)"
+    status: "DECODE(\"state\", 'NEW', 'OPEN', 'IN_REVIEW', 'IN_PROGRESS', 'ESCALATED', 'IN_PROGRESS', 'CLOSED', 'CLOSED')"
+    disposition: "DECODE(\"outcome\", 'NOT_SUSPICIOUS', 'FALSE_POSITIVE', 'NO_SAR_AFTER_REVIEW', 'NO_SAR_AFTER_REVIEW', 'SAR_FILED', 'SAR_FILED')"
+    closed_on: "TO_DATE(LEFT(\"closed_at\", 10))"
+    owner: "\"analyst\""
+    branch: "account's branch_name"

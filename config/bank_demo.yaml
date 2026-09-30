@@ -1,0 +1,74 @@
+# Per-institution configuration (F14).
+# Everything that differs between banks lives here or in config/mappings/.
+# Code must never branch on institution id. ALL DATA IS SYNTHETIC.
+
+institution:
+  id: kvb_merged
+  display_name: "Kestrel Valley Bank"          # fictional
+  customer_term: customer                      # "member" for a credit union
+  as_of_date: "2026-08-31"
+  merger:
+    acquired_institution: "Pellbrook Savings Bank"   # fictional
+    legal_close_date: "2026-06-30"
+    note: "Both cores remain in production until conversion; they are one legal entity for BSA purposes."
+  cores:
+    core_a:
+      label: "Core A (Kestrel Valley legacy core)"
+      mapping: config/mappings/core_a.yaml
+    core_b:
+      label: "Core B (Pellbrook legacy core)"
+      mapping: config/mappings/core_b.yaml
+
+# Configured because the synthetic dataset has no full balance sheet.
+capital:
+  total_risk_based_capital_usd: 265000000
+
+thresholds:
+  ctr_cash_threshold_usd: 10000            # CTR: cash > $10,000 per business day, aggregated per person
+  cross_core_cash_window_days: 30
+  cross_core_cash_total_usd: 50000         # demo question threshold
+  legacy_per_core_cash_30d_usd: 30000      # what each legacy monitoring system alerted on
+  structuring_band_low_usd: 7000           # deposits in [low, CTR threshold) count as "near-threshold"
+  near_threshold_min_count: 4
+  dormancy_days: 365
+  reactivation_inflow_usd: 10000
+  rapid_in_out_pct_out: 0.90
+  rapid_in_out_hours: 48
+  rapid_in_out_min_inflow_usd: 25000
+  alert_sla_days: 30
+
+matching:
+  auto_link_min_score: 0.95
+  review_min_score: 0.80
+  block_on: [tax_id_token, dob_last_name_initial, zip5_last_name_initial]
+  hard_guards:
+    conflicting_tax_id_blocks_auto_link: true
+    max_records_per_party: 5
+
+# F4 risk engine. Each rule returns a reason code; the weighted sum is the score (0-100).
+risk_rules:
+  - code: XCORE_CASH_30D
+    description: "Combined cash deposits across both cores exceed the 30-day threshold"
+    weight: 35
+  - code: CTR_AGGREGATION_MISSED
+    description: "Same-day cash across cores exceeds the CTR threshold with no CTR filed"
+    weight: 30
+  - code: NEAR_THRESHOLD_CASH
+    description: "Repeated cash deposits just below the CTR threshold"
+    weight: 20
+  - code: RAPID_IN_OUT
+    description: "Most of a large inflow leaves within the rapid-movement window"
+    weight: 25
+  - code: DORMANT_REACTIVATION
+    description: "Large inflow into an account dormant for more than the dormancy period"
+    weight: 20
+  - code: KYC_MISMATCH
+    description: "Observed cash far exceeds the expected monthly cash in the KYC profile"
+    weight: 15
+  - code: KYC_INCONSISTENT_ACROSS_CORES
+    description: "Occupation or business differs between the two cores' KYC records"
+    weight: 10
+
+report:
+  approval_required: true          # F7: no output is final without an approval row
+  approver_cannot_be_author: true

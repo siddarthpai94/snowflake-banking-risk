@@ -1,0 +1,61 @@
+# Small, fast profile for tests. Same shape as demo.yaml at about 1/20 scale.
+seed: 7
+window_start: "2026-03-01"
+window_end: "2026-08-31"
+
+core_a:
+  individuals: 1600
+  businesses: 60
+  accounts: 2700
+  loans: 650
+  branches: 4
+core_b:
+  individuals: 900
+  businesses: 30
+  accounts: 1450
+  loans: 350
+  branches: 3
+
+duplicates:
+  tier_a_clean: 160
+  tier_b_variant: 30
+  tier_c_hard: 10
+
+lookalikes:
+  jr_sr_same_address: 6
+  twins: 4
+  same_name_same_dob: 5
+  core_b_token_missing: 4
+
+dq_issues:
+  core_a_missing_dob: 12
+  core_a_future_dob: 2
+  core_a_duplicate_acct_no: 2
+  core_b_invalid_zip: 6
+  core_b_orphan_account: 3
+
+organic:
+  dormant_accounts_a: 18
+  dormant_accounts_b: 9
+  legit_reactivations: 4
+  closed_account_pct: 0.06
+  alerts_a: 45
+  alerts_b: 30
+  random_kyc_summaries: 50
+
+injected:
+  cross_core_structurers: 5
+  missed_ctr_aggregation_people: 2
+  kyc_conflict_people: 2
+  single_core_structurers: 3
+  cash_intensive_businesses: 3
+  rapid_in_out: 4
+  rapid_in_out_with_alert: 2
+  dormant_reactivation: 4
+  dormant_reactivation_with_alert: 2
+
+core_c:
+  customers: 200
+  accounts: 320
+  overlap_with_core_a: 20
+  txns_per_account_month: 2.0

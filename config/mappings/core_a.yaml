@@ -1,0 +1,87 @@
+# Core A -> canonical model mapping. Reference output for the F9 onboarding skill:
+# the skill must produce a mapping in this format for a core it has never seen.
+# Expressions are Snowflake SQL over the Bronze table's columns.
+source_system: core_a
+label: "Kestrel Valley legacy core"
+
+customer:
+  bronze_table: BRONZE.CORE_A_CUSTOMERS
+  key: CIF_NO
+  fields:
+    party_kind: "IFF(CUST_TYPE = 'B', 'ORG', 'PERSON')"
+    first_name: "NULLIF(UPPER(TRIM(FIRST_NM)), '')"
+    middle_initial: "NULLIF(UPPER(TRIM(MID_INIT)), '')"
+    last_name: "NULLIF(UPPER(TRIM(LAST_NM)), '')"
+    name_suffix: "NULLIF(UPPER(TRIM(SFX)), '')"
+    org_name: "NULLIF(UPPER(TRIM(BUS_NM)), '')"
+    birth_date: "IFF(BIRTH_DT = '00000000', NULL, TRY_TO_DATE(BIRTH_DT, 'YYYYMMDD'))"
+    tax_token: "NULLIF(LOWER(TRIM(TAX_ID_TKN)), '')"
+    street: "UPPER(TRIM(ADDR_LN1))"
+    city: "UPPER(TRIM(CITY))"
+    state: "UPPER(TRIM(ST))"
+    zip: "TRIM(ZIP5)"
+    phone: "REGEXP_REPLACE(PHONE_NO, '[^0-9]', '')"
+    email: "LOWER(TRIM(EMAIL_ADDR))"
+    occupation: "OCCUP_DESC"
+    risk_rating: "DECODE(RISK_RTG, 'L', 'LOW', 'M', 'MEDIUM', 'H', 'HIGH')"
+    home_branch: "HOME_BR_CD"
+
+account:
+  bronze_table: BRONZE.CORE_A_ACCOUNTS
+  key: ACCT_NO
+  fields:
+    customer_key: CIF_NO
+    product_type: "DECODE(PROD_CD, 'DDA', 'CHECKING', 'SAV', 'SAVINGS', 'MMA', 'MONEY_MARKET', 'CD', 'CERTIFICATE')"
+    branch: BR_CD
+    opened_on: "TRY_TO_DATE(OPEN_DT, 'YYYYMMDD')"
+    closed_on: "TRY_TO_DATE(CLOSE_DT, 'YYYYMMDD')"
+    status: "DECODE(ACCT_STAT, 'A', 'OPEN', 'D', 'DORMANT', 'C', 'CLOSED')"
+    dormant_since: "TRY_TO_DATE(DORM_FLAG_DT, 'YYYYMMDD')"
+    reactivated_on: "TRY_TO_DATE(REACT_DT, 'YYYYMMDD')"
+    balance_usd: "TO_NUMBER(CUR_BAL_CENTS) / 100"
+    rate_pct: "TO_NUMBER(INT_RATE_PCT, 10, 3)"
+
+loan:
+  bronze_table: BRONZE.CORE_A_LOANS
+  key: LOAN_NO
+  fields:
+    customer_key: CIF_NO
+    loan_type: "DECODE(LOAN_TYP, 'AUTO', 'AUTO', 'MORT', 'MORTGAGE', 'HELOC', 'HELOC', 'PERS', 'PERSONAL', 'CRE', 'CRE', 'CI', 'C_AND_I')"
+    branch: BR_CD
+    originated_on: "TRY_TO_DATE(ORIG_DT, 'YYYYMMDD')"
+    matures_on: "TRY_TO_DATE(MAT_DT, 'YYYYMMDD')"
+    original_amount_usd: "TO_NUMBER(ORIG_AMT_CENTS) / 100"
+    principal_usd: "TO_NUMBER(CUR_PRIN_CENTS) / 100"
+    rate_pct: "TO_NUMBER(INT_RATE_PCT, 10, 3)"
+    cre_category: "IFF(COLL_TYP LIKE 'CRE-%', DECODE(SPLIT_PART(COLL_TYP, '-', 2), 'OFF', 'OFFICE', 'RET', 'RETAIL', 'MF', 'MULTIFAMILY', 'IND', 'INDUSTRIAL', 'CON', 'CONSTRUCTION'), NULL)"
+    owner_occupied: "OWNER_OCC_FLG = 'Y'"
+    days_past_due: "TO_NUMBER(DPD)"
+
+transaction:
+  bronze_table: BRONZE.CORE_A_TXNS
+  key: TXN_ID
+  fields:
+    account_key: ACCT_NO
+    posted_at_local: "TO_TIMESTAMP_NTZ(POST_DT || POST_TM, 'YYYYMMDDHH24MISS')"
+    txn_type: "DECODE(TXN_CD, 'CDEP', 'CASH_DEPOSIT', 'CWDR', 'CASH_WITHDRAWAL', 'ATMW', 'ATM_WITHDRAWAL', 'ACHC', 'ACH_CREDIT', 'ACHD', 'ACH_DEBIT', 'WIRI', 'WIRE_IN', 'WIRO', 'WIRE_OUT', 'CHKP', 'CHECK_PAID', 'CARD', 'CARD_PURCHASE', 'XFRI', 'TRANSFER_IN', 'XFRO', 'TRANSFER_OUT', 'INTC', 'INTEREST')"
+    amount_signed_usd: "TO_NUMBER(AMT_CENTS) / 100"
+    channel: "DECODE(CHNL_CD, 'BR', 'BRANCH', 'ATM', 'ATM', 'OLB', 'ONLINE', 'MOB', 'MOBILE', 'SYS', 'SYSTEM')"
+    branch: "NULLIF(BR_CD, '')"
+    ctr_filed: "CTR_FLG = 'Y'"
+    counterparty: "NULLIF(CPTY_NM, '')"
+    counterparty_institution: "NULLIF(CPTY_BANK, '')"
+
+alert:
+  bronze_table: BRONZE.CORE_A_AML_ALERTS
+  key: ALERT_ID
+  fields:
+    customer_key: CIF_NO
+    account_key: ACCT_NO
+    scenario: "DECODE(RULE_CD, 'LCT01', 'LARGE_CASH', 'STR02', 'STRUCTURING', 'VEL03', 'VELOCITY', 'WIR04', 'HIGH_RISK_WIRE', 'RMV05', 'RAPID_MOVEMENT', 'DRM06', 'DORMANT_ACTIVITY')"
+    alert_date: "TRY_TO_DATE(ALERT_DT, 'YYYYMMDD')"
+    legacy_score: "TO_NUMBER(ALERT_SCORE)"
+    status: "DECODE(ALERT_STAT, 'OPEN', 'OPEN', 'WIP', 'IN_PROGRESS', 'CLOSED', 'CLOSED')"
+    disposition: "DECODE(DISPO_CD, 'FP', 'FALSE_POSITIVE', 'NSR', 'NO_SAR_AFTER_REVIEW', 'SAR', 'SAR_FILED')"
+    closed_on: "TRY_TO_DATE(CLOSE_DT, 'YYYYMMDD')"
+    owner: ASSIGNED_TO
+    branch: BR_CD

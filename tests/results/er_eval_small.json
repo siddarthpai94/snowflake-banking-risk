@@ -1,0 +1,61 @@
+{
+  "dataset": "small",
+  "engine": "duckdb 1.5.6 (local pre-flight; Snowflake run pending)",
+  "candidate_pairs": {
+    "AUTO_LINK": 198,
+    "REJECT": 135,
+    "REVIEW": 6
+  },
+  "true_links": 200,
+  "auto_links": 198,
+  "auto_links_correct": 198,
+  "false_merges": 0,
+  "precision_pct": 100.0,
+  "recall_auto_pct": 99.0,
+  "true_links_in_review": 2,
+  "recall_after_review_pct": 100.0,
+  "missed_links": 0,
+  "review_queue_size": 6,
+  "lookalike_pairs": 15,
+  "lookalikes_auto_merged": 0,
+  "lookalikes_in_review": 4,
+  "by_tier": {
+    "A": {
+      "true_links": 160,
+      "auto_linked": 160,
+      "in_review": 0,
+      "missed": 0
+    },
+    "B": {
+      "true_links": 30,
+      "auto_linked": 30,
+      "in_review": 0,
+      "missed": 0
+    },
+    "C": {
+      "true_links": 10,
+      "auto_linked": 8,
+      "in_review": 2,
+      "missed": 0
+    }
+  },
+  "parties_after_auto_links": 2392,
+  "parties_true": 2390,
+  "dq_exceptions_found": 25,
+  "dq_injected": 25,
+  "dq_injected_found": 25,
+  "dq_extra_found": [],
+  "dq_by_rule": {
+    "DQ_DUPLICATE_KEY": 2,
+    "DQ_FUTURE_DOB": 2,
+    "DQ_INVALID_ZIP": 6,
+    "DQ_MISSING_DOB": 12,
+    "DQ_ORPHAN_ACCOUNT": 3
+  },
+  "false_merge_examples": [],
+  "missed_examples": [],
+  "seconds": {
+    "load_bronze": 0.4,
+    "silver": 0.1
+  }
+}
