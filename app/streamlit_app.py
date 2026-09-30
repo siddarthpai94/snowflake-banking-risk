@@ -289,8 +289,9 @@ EXAMPLES = ["Which customers moved more than $50k in cash across both cores in 3
 
 def ask_and_cases():
     st.header("Ask & cases")
+    banner = st.container()          # always present, so the tabs below keep their place (and their selected tab)
     if st.session_state.get("flash"):
-        st.success(st.session_state.pop("flash"))
+        banner.success(st.session_state.pop("flash"))
     ask_tab, case_tab, log_tab = st.tabs(["Ask the copilot", "Case narratives", "Audit log"])
     with ask_tab:
         st.caption("Questions are routed by readable rules to a reviewed question, document search or the customer view.")
