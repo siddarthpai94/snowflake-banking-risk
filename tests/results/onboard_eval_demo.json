@@ -1,0 +1,536 @@
+{
+  "core_a": {
+    "customers": 32000,
+    "agreement_with_hand_mapping_pct": {
+      "first_name": 100.0,
+      "last_name": 100.0,
+      "birth_date": 99.94,
+      "tax_token": 100.0,
+      "city": 100.0,
+      "state": 100.0,
+      "zip": 100.0,
+      "phone": 100.0,
+      "email": 100.0
+    },
+    "review_items": 0,
+    "views_not_built": [],
+    "dq": [
+      [
+        "account",
+        "balance_usd not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "duplicate keys",
+        10,
+        "must be 0"
+      ],
+      [
+        "account",
+        "key is null",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "opened_on not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "orphan accounts (no customer)",
+        0,
+        "report"
+      ],
+      [
+        "account",
+        "product_type not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "rows",
+        52010,
+        "information"
+      ],
+      [
+        "account",
+        "status not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "birth_date in the future or before 1900",
+        20,
+        "report"
+      ],
+      [
+        "customer",
+        "birth_date not parsed or not mapped",
+        250,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "customer_since not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "duplicate keys",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "key is null",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "party_kind not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "phone not 10 digits",
+        0,
+        "report"
+      ],
+      [
+        "customer",
+        "rows",
+        32000,
+        "information"
+      ],
+      [
+        "customer",
+        "tax token not 16 hex characters",
+        0,
+        "report"
+      ],
+      [
+        "customer",
+        "zip not 5 digits or 00000",
+        0,
+        "report"
+      ],
+      [
+        "transaction",
+        "amount_signed_usd not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "channel not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "duplicate keys",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "key is null",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "orphan transactions (no account)",
+        0,
+        "report"
+      ],
+      [
+        "transaction",
+        "posted_at not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "rows",
+        1339872,
+        "information"
+      ],
+      [
+        "transaction",
+        "txn_type not parsed or not mapped",
+        0,
+        "must be 0"
+      ]
+    ]
+  },
+  "core_b": {
+    "customers": 18000,
+    "agreement_with_hand_mapping_pct": {
+      "first_name": 100.0,
+      "last_name": 100.0,
+      "birth_date": 100.0,
+      "tax_token": 100.0,
+      "city": 100.0,
+      "state": 100.0,
+      "zip": 99.33,
+      "phone": 100.0,
+      "email": 100.0
+    },
+    "review_items": 0,
+    "views_not_built": [],
+    "dq": [
+      [
+        "account",
+        "balance_usd not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "duplicate keys",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "key is null",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "opened_on not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "orphan accounts (no customer)",
+        40,
+        "report"
+      ],
+      [
+        "account",
+        "product_type not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "rows",
+        28000,
+        "information"
+      ],
+      [
+        "account",
+        "status not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "birth_date in the future or before 1900",
+        0,
+        "report"
+      ],
+      [
+        "customer",
+        "birth_date not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "customer_since not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "duplicate keys",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "key is null",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "party_kind not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "phone not 10 digits",
+        0,
+        "report"
+      ],
+      [
+        "customer",
+        "rows",
+        18000,
+        "information"
+      ],
+      [
+        "customer",
+        "tax token not 16 hex characters",
+        0,
+        "report"
+      ],
+      [
+        "customer",
+        "zip not 5 digits or 00000",
+        120,
+        "report"
+      ],
+      [
+        "transaction",
+        "amount_signed_usd not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "channel not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "duplicate keys",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "key is null",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "orphan transactions (no account)",
+        0,
+        "report"
+      ],
+      [
+        "transaction",
+        "posted_at not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "rows",
+        731411,
+        "information"
+      ],
+      [
+        "transaction",
+        "txn_type not parsed or not mapped",
+        0,
+        "must be 0"
+      ]
+    ]
+  },
+  "core_c": {
+    "links_to_core_a": {
+      "true_links": 300,
+      "found": 297,
+      "correct": 297,
+      "false_links": 0,
+      "recall_pct": 99.0
+    },
+    "review_items": [
+      {
+        "field": "customer.party_kind",
+        "issue": "no column found"
+      },
+      {
+        "field": "customer.email",
+        "issue": "no column found"
+      },
+      {
+        "field": "status",
+        "column": "statusCode",
+        "issue": "code values not in the reviewed vocabulary",
+        "values": [
+          "1",
+          "2",
+          "9"
+        ],
+        "action": "add them to VOCAB or to the mapping by hand"
+      },
+      {
+        "field": "channel",
+        "column": "channel",
+        "issue": "code values not in the reviewed vocabulary",
+        "values": [
+          "card"
+        ],
+        "action": "add them to VOCAB or to the mapping by hand"
+      }
+    ],
+    "views_not_built": [],
+    "dq": [
+      [
+        "account",
+        "balance_usd not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "duplicate keys",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "key is null",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "opened_on not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "orphan accounts (no customer)",
+        0,
+        "report"
+      ],
+      [
+        "account",
+        "product_type not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "account",
+        "rows",
+        5000,
+        "information"
+      ],
+      [
+        "customer",
+        "birth_date in the future or before 1900",
+        0,
+        "report"
+      ],
+      [
+        "customer",
+        "birth_date not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "customer_since not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "duplicate keys",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "key is null",
+        0,
+        "must be 0"
+      ],
+      [
+        "customer",
+        "phone not 10 digits",
+        0,
+        "report"
+      ],
+      [
+        "customer",
+        "rows",
+        3000,
+        "information"
+      ],
+      [
+        "customer",
+        "tax token not 16 hex characters",
+        0,
+        "report"
+      ],
+      [
+        "customer",
+        "zip not 5 digits or 00000",
+        0,
+        "report"
+      ],
+      [
+        "transaction",
+        "amount_signed_usd not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "channel not parsed or not mapped",
+        11225,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "duplicate keys",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "key is null",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "orphan transactions (no account)",
+        0,
+        "report"
+      ],
+      [
+        "transaction",
+        "posted_at not parsed or not mapped",
+        0,
+        "must be 0"
+      ],
+      [
+        "transaction",
+        "rows",
+        55938,
+        "information"
+      ],
+      [
+        "transaction",
+        "txn_type not parsed or not mapped",
+        0,
+        "must be 0"
+      ]
+    ]
+  }
+}

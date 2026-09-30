@@ -37,7 +37,57 @@ MACROS = [
     "CREATE OR REPLACE MACRO regexp_like(s, p) AS regexp_full_match(s, p)",
     "CREATE OR REPLACE MACRO regexp_replace_all(s, p, r) AS regexp_replace(s, p, r, 'g')",
     "CREATE OR REPLACE MACRO editdistance(a, b) AS levenshtein(a, b)",
+    "CREATE OR REPLACE MACRO try_to_number(x) AS TRY_CAST(x AS DOUBLE)",
+    "CREATE OR REPLACE MACRO to_number(x, p, s) AS CAST(x AS DECIMAL(38, 2))",
+    "CREATE OR REPLACE MACRO to_timestamp_ntz(x) AS CAST(to_timestamp(x) AS TIMESTAMP)",
+    "CREATE OR REPLACE MACRO try_to_timestamp_ntz(x) AS TRY_CAST(x AS TIMESTAMP)",
+    "CREATE OR REPLACE MACRO to_date(x) AS CAST(x AS DATE)",
 ]
+
+
+def _split_args(inner):
+    """Split a function's argument list on top-level commas (not inside parentheses or quotes)."""
+    args, depth, cur, quote = [], 0, [], False
+    for ch in inner:
+        if ch == "'":
+            quote = not quote
+        if not quote:
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            elif ch == "," and depth == 0:
+                args.append("".join(cur).strip())
+                cur = []
+                continue
+        cur.append(ch)
+    args.append("".join(cur).strip())
+    return args
+
+
+def rewrite_decode(sql):
+    """Snowflake DECODE(x, a1, b1, a2, b2, ...[, default]) -> CASE x WHEN a1 THEN b1 ... END."""
+    out, i, pat = [], 0, re.compile(r"\bDECODE\(", re.I)
+    while (m := pat.search(sql, i)):
+        out.append(sql[i:m.start()])
+        depth, j = 1, m.end()
+        quote = False
+        while depth:
+            ch = sql[j]
+            if ch == "'":
+                quote = not quote
+            elif not quote:
+                depth += {"(": 1, ")": -1}.get(ch, 0)
+            j += 1
+        args = _split_args(sql[m.end():j - 1])
+        args = [rewrite_decode(a) for a in args]
+        x, rest = args[0], args[1:]
+        whens = " ".join(f"WHEN {rest[k]} THEN {rest[k + 1]}" for k in range(0, len(rest) - 1, 2))
+        default = f" ELSE {rest[-1]}" if len(rest) % 2 else ""
+        out.append(f"(CASE {x} {whens}{default} END)")
+        i = j
+    out.append(sql[i:])
+    return "".join(out)
 DATE_FMT = {"YYYYMMDD": "%Y%m%d", "MM/DD/YYYY": "%m/%d/%Y", "YYYY-MM-DD": "%Y-%m-%d", "YYYY/MM/DD": "%Y/%m/%d",
             "YYYYMMDDHH24MISS": "%Y%m%d%H%M%S", 'YYYY-MM-DD"T"HH24:MI:SS': "%Y-%m-%dT%H:%M:%S"}
 
@@ -71,7 +121,9 @@ def translate(sql: str) -> str:
     sql = re.sub(r"LISTAGG\((.+?),\s*('[^']*')\)\s*WITHIN GROUP\s*\(ORDER BY ([^)]+)\)",
                  r"string_agg(\1, \2 ORDER BY \3)", sql)
     sql = sql.replace("CURRENT_DATE()", "CURRENT_DATE")
-    sql = sql.replace("TIMESTAMP_NTZ", "TIMESTAMP")
+    sql = rewrite_decode(sql)
+    sql = re.sub(r"\bTIMESTAMP_NTZ\b", "TIMESTAMP", sql)
+    sql = re.sub(r"\bTIMESTAMP_LTZ\b", "TIMESTAMPTZ", sql)
     return sql
 
 

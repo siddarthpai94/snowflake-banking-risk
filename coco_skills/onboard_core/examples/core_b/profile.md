@@ -1,0 +1,67 @@
+## branch.csv.gz (6 rows; 6 sampled)
+- branch_name: word; e.g. Pellbrook Downtown, Marrow Point
+- branch_city: word; e.g. Pellbrook, Marrow Point
+- branch_state: state, word; e.g. PA, PA
+- opened_year: number; e.g. 1968, 1975
+## case_alert.csv.gz (595 rows; 595 sampled)
+- case_ref: phone, id; e.g. AL-2026-000001, AL-2026-000003
+- party_uuid: uuid; e.g. e5c8f422-27fb-40bd-a04c-5b3d317505dd, a3075652-629c-4c8f-a16e-2bc4b7dca9a1
+- acct_ref: ; e.g. PB-15104806, PB-14419797
+- scenario_name: code; e.g. Possible Structuring, High Velocity
+- created_at: iso_timestamp, id; e.g. 2026-03-01T01:54:55, 2026-03-02T02:04:24
+- priority: code; e.g. P2, P1
+- state: word, code; e.g. CLOSED, CLOSED
+- outcome: code; e.g. NOT_SUSPICIOUS, NO_SAR_AFTER_REVIEW
+- closed_at: iso_timestamp, id; e.g. 2026-03-17T09:12:03, 2026-03-09T15:23:27
+- analyst: word, code; e.g. Omar Haddad, Grace Liu
+## deposit_account.csv.gz (28,000 rows; 3,000 sampled)
+- acct_ref: id; e.g. PB-20282792, PB-27614834
+- party_uuid: uuid; e.g. 32f94f26-90c6-4ae7-8fe8-eeccfd51c3b1, 8b5cf9e9-d14b-48f6-b65e-81395b43bd05
+- product_name: word, code; e.g. Everyday Checking, Everyday Checking
+- branch_name: word, code; e.g. Stillwater Junction, Wrenfield
+- opened_on: date [YYYY-MM-DD]; e.g. 2016-01-15, 2003-02-06
+- closed_on: date [YYYY-MM-DD]; e.g. 2026-05-24, 2026-01-18
+- acct_status: word, code; e.g. OPEN, OPEN
+- dormant_since: date, code, id [YYYY-MM-DD]; e.g. 2024-10-23, 2025-09-02
+- reactivated_on: date [YYYY-MM-DD]; e.g. 2026-08-20, 2026-05-28
+- ledger_balance: money, number; e.g. 15819.98, 4433.32
+- rate_pct: money, number; e.g. 0.07, 0.03
+## loan.csv.gz (7,000 rows; 3,000 sampled)
+- note_number: phone, id; e.g. LN-2020-209324, LN-2023-161660
+- party_uuid: uuid; e.g. c228d23d-2659-47da-b028-e75fc30b33bb, 811364c6-7f0e-4c45-8c4f-8d41d7b3ea56
+- product_name: code; e.g. Home Equity Line, Personal Loan
+- branch_name: word, code; e.g. Pellbrook Downtown, Wrenfield
+- booked_on: date [YYYY-MM-DD]; e.g. 2020-09-26, 2023-02-28
+- maturity_on: date [YYYY-MM-DD]; e.g. 2030-09-24, 2027-02-27
+- original_amount: money, number; e.g. 23600.00, 11300.00
+- principal_outstanding: money, number, id; e.g. 16600.82, 1393.15
+- interest_rate_pct: number; e.g. 8.059, 11.700
+- collateral_desc: ; e.g. Second lien - primary residence, Unsecured
+- owner_occupied: word, code; e.g. true, false
+- days_delinquent: number; e.g. 0, 0
+## party.csv.gz (18,000 rows; 3,000 sampled)
+- party_uuid: uuid, id; e.g. 32f94f26-90c6-4ae7-8fe8-eeccfd51c3b1, 8b5cf9e9-d14b-48f6-b65e-81395b43bd05
+- party_kind: word, code; e.g. PERSON, PERSON
+- full_name: name_last_first, id; e.g. SALAS, BILLY W, BERRY, PETER B
+- dob: date [MM/DD/YYYY]; e.g. 05/25/1986, 12/26/1994
+- ssn_token: tax_token, id; e.g. tkn_703c1e59354b262f, tkn_67aa7e4e7aed571d
+- street: street, id; e.g. 1030 Grant Boulevard, 6665 Elm Way
+- city_state_zip: name_last_first, city_state_zip; e.g. Ashford Mills, OH 44101, Granary Hill, OH 44418
+- phone_num: phone; e.g. (419) 555-7035, (419) 555-1675
+- email_addr: email, id; e.g. billys73@example.net, peterb12@example.net
+- relationship_start: date [YYYY-MM-DD]; e.g. 2016-01-05, 2002-02-09
+- kyc_risk: number, code; e.g. 2, 2
+- employer_or_industry: word; e.g. Home health aide, Home health aide
+- home_branch: word, code; e.g. Stillwater Junction, Wrenfield
+## txn.csv.gz (731,411 rows; 3,000 sampled)
+- txn_uuid: uuid, id; e.g. eaa0dea5-18b5-4f5a-bec9-03887ed4c873, 48f150a6-1d30-4b92-a1ac-2c7f9e642c8b
+- acct_ref: ; e.g. PB-22359899, PB-14046886
+- txn_timestamp: iso_timestamp, id; e.g. 2026-05-05T10:20:21-04:00, 2026-05-25T03:53:02-04:00
+- amount: money, number; e.g. 700.07, 114.31
+- dr_cr: code; e.g. C, D
+- txn_type_desc: code; e.g. Transfer In, Check Paid
+- channel_desc: word, code; e.g. Online Banking, System
+- branch_name: word, code; e.g. Stillwater Junction, Marrow Point
+- ctr_filed: word, code; e.g. false, false
+- counterparty: code; e.g. City Utilities, City Utilities
+- counterparty_institution: code; e.g. Summit Trust Co, First Meridian Bank

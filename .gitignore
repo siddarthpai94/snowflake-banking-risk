@@ -5,3 +5,4 @@ __pycache__/
 *.duckdb
 .env
 outputs/exports/
+build/
