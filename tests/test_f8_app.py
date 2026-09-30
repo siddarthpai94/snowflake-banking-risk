@@ -67,3 +67,20 @@ def test_customer_and_four_eyes_in_the_ui(app):
     at.text_input(key="user").set_value("second_person").run()
     [b for b in at.button if b.label == "Approve"][0].click().run()
     assert any("Approved by second_person" in s.value for s in at.success)
+
+
+def test_pdf_download_is_a_real_pdf_and_writes_no_stray_files(app):
+    at, *_ = app
+    before = set(p.name for p in REPO.iterdir())
+    at.radio(key="page").set_value("Ask & cases").run()
+    assert at.get("download_button")                      # the case PDF is offered
+    after = set(p.name for p in REPO.iterdir())
+    assert not {n for n in after - before if "BytesIO" in n}
+
+
+def test_export_pdf_to_a_buffer():
+    import io
+    from outputs.export_pdf import export_pdf
+    buf = io.BytesIO()
+    export_pdf("# Title\n\nSome text with $1,000.\n", buf, status="DRAFT")
+    assert buf.getvalue().startswith(b"%PDF") and len(buf.getvalue()) > 1000

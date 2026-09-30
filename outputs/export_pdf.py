@@ -64,7 +64,8 @@ def export_pdf(markdown, path, status="DRAFT", footer=""):
             canvas.drawCentredString(0, 0, "DRAFT - NOT APPROVED")
         canvas.restoreState()
 
-    doc = SimpleDocTemplate(str(path), pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm,
+    target = path if hasattr(path, "write") else str(path)      # a file-like buffer, or a file path
+    doc = SimpleDocTemplate(target, pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm,
                             topMargin=15 * mm, bottomMargin=18 * mm, title="Case narrative", author="Risk Copilot")
     doc.build(flow, onFirstPage=decorate, onLaterPages=decorate)
     return path
