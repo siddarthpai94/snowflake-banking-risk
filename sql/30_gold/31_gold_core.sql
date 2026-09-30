@@ -44,7 +44,7 @@ WITH a AS (
            CASE "ACCT_STAT" WHEN 'A' THEN 'OPEN' WHEN 'D' THEN 'DORMANT' WHEN 'C' THEN 'CLOSED' END AS status,
            TRY_TO_DATE("DORM_FLAG_DT", 'YYYYMMDD') AS dormant_since,
            TRY_TO_DATE("REACT_DT", 'YYYYMMDD') AS reactivated_on,
-           CAST("CUR_BAL_CENTS" AS DECIMAL(38, 2)) / 100 AS balance_usd,
+           CAST(CAST("CUR_BAL_CENTS" AS DECIMAL(38, 2)) / 100 AS DECIMAL(38, 2)) AS balance_usd,
            CAST("INT_RATE_PCT" AS DECIMAL(10, 3)) AS rate_pct,
            _SOURCE_FILE AS source_file, _SOURCE_ROW AS source_row
       FROM BRONZE.CORE_A_ACCOUNTS
@@ -86,8 +86,8 @@ WITH a AS (
            "BR_CD" AS branch,
            TRY_TO_DATE("ORIG_DT", 'YYYYMMDD') AS originated_on,
            TRY_TO_DATE("MAT_DT", 'YYYYMMDD') AS matures_on,
-           CAST("ORIG_AMT_CENTS" AS DECIMAL(38, 2)) / 100 AS original_amount_usd,
-           CAST("CUR_PRIN_CENTS" AS DECIMAL(38, 2)) / 100 AS principal_usd,
+           CAST(CAST("ORIG_AMT_CENTS" AS DECIMAL(38, 2)) / 100 AS DECIMAL(38, 2)) AS original_amount_usd,
+           CAST(CAST("CUR_PRIN_CENTS" AS DECIMAL(38, 2)) / 100 AS DECIMAL(38, 2)) AS principal_usd,
            CAST("INT_RATE_PCT" AS DECIMAL(10, 3)) AS rate_pct,
            CASE "COLL_TYP" WHEN 'CRE-OFF' THEN 'OFFICE' WHEN 'CRE-RET' THEN 'RETAIL' WHEN 'CRE-MF' THEN 'MULTIFAMILY'
                            WHEN 'CRE-IND' THEN 'INDUSTRIAL' WHEN 'CRE-CON' THEN 'CONSTRUCTION' END AS cre_category,
@@ -138,7 +138,7 @@ WITH a AS (
                          WHEN 'WIRI' THEN 'WIRE_IN' WHEN 'WIRO' THEN 'WIRE_OUT' WHEN 'CHKP' THEN 'CHECK_PAID'
                          WHEN 'CARD' THEN 'CARD_PURCHASE' WHEN 'XFRI' THEN 'TRANSFER_IN' WHEN 'XFRO' THEN 'TRANSFER_OUT'
                          WHEN 'INTC' THEN 'INTEREST' END AS txn_type,
-           CAST("AMT_CENTS" AS DECIMAL(38, 2)) / 100 AS amount_signed_usd,
+           CAST(CAST("AMT_CENTS" AS DECIMAL(38, 2)) / 100 AS DECIMAL(38, 2)) AS amount_signed_usd,
            CASE "CHNL_CD" WHEN 'BR' THEN 'BRANCH' WHEN 'ATM' THEN 'ATM' WHEN 'OLB' THEN 'ONLINE'
                           WHEN 'MOB' THEN 'MOBILE' WHEN 'SYS' THEN 'SYSTEM' END AS channel,
            NULLIF("BR_CD", '') AS branch,

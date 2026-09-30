@@ -11,9 +11,9 @@ A risk, fraud and regulatory intelligence copilot on Snowflake, built with Corte
 | Feature | Status |
 | --- | --- |
 | F1 Synthetic two-core bank generator | **Done**: 50,000 customer records, 80,000 accounts, 20,000 loans, 2.07M transactions, 1,502 alerts, 2,873 investigator notes, 2,541 KYC summaries, BSA policy PDF, ground truth |
-| F2 Canonical model + entity resolution | **Silver done and verified in Snowflake** (matches DuckDB exactly). **Gold built**: all 15 golden questions answered correctly from Gold (DuckDB; Snowflake run next) |
+| F2 Canonical model + entity resolution | **Silver done and verified in Snowflake** (matches DuckDB exactly). **Gold built and verified in Snowflake**: all 15 golden questions answered correctly from Gold |
 | F3 Semantic view | Spec and 15 golden questions ready; golden answers already reproduced by `sql/30_gold/92_golden_check.sql`. No AI: metric views plus a question picker |
-| F4 Risk engine | **Built** (`sql/30_gold/32_risk_engine.sql`): 8 transparent rules, weighted score, reason codes, evidence and a ranked queue. All 25 cross-core structurers rank 1-25 of 472 (DuckDB; Snowflake run next) |
+| F4 Risk engine | **Built** (`sql/30_gold/32_risk_engine.sql`): 8 transparent rules, weighted score, reason codes, evidence and a ranked queue. All 25 cross-core structurers rank 1-25 of 472; **F4 acceptance PASS in Snowflake** |
 | F5 Document search | Notes, KYC summaries and the policy PDF generated; page index recorded for citations |
 | F6 Router, F7 Outputs, F8 App, F9 CoCo skill | Not started (Friday-Saturday). Built without AI: rule-based router, template narratives with approval, Streamlit. F9 test fixture (Core C) and target mapping format ready |
 
@@ -110,7 +110,7 @@ docs/                      one-page spec, CoCo usage log
 
 ## Known limits
 
-- The Gold and risk-engine SQL has so far run only on DuckDB through a translation layer; the Snowflake run is next. (The Silver SQL gave identical results on both.)
+- Silver, Gold and the risk engine give identical results on DuckDB and Snowflake (checked on 30 Sep 2026).
 - The risk engine's thresholds were set before looking at the demo data, but two changes followed inspection of the small dev dataset: near-threshold cash uses any 30-day window, and the mitigating KYC rule allows 1.5 times the expected cash. The holdout column is the honest measure.
 - One ground-truth definition was aligned with the engine: the "highest-risk customer" (D05) is now chosen by configured rule weights rather than by counting reason codes. The demo answer did not change.
 - The matcher uses a standard nickname dictionary. The generator draws nickname variations from the same list, which flatters recall on nickname cases. Real deployments should use a larger dictionary.

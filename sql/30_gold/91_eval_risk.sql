@@ -46,7 +46,7 @@ SELECT pattern_type, COUNT(*) AS patterns,
        COUNT(queue_rank) AS in_queue,
        MAX(queue_rank) AS worst_rank, MAX(queue_size) AS queue_size, MAX(queue_pct) AS worst_pct,
        MIN(risk_score) AS min_score, MAX(risk_score) AS max_score,
-       SUM(IFF(n_expected_fired = n_expected, 1, 0)) AS all_expected_codes_fired
+       IFF(MAX(n_expected) IS NULL, NULL, SUM(IFF(n_expected_fired = n_expected, 1, 0))) AS all_expected_codes_fired  -- NULL: no codes expected
   FROM EVAL.RISK_PATTERN_RESULT
  GROUP BY pattern_type
  ORDER BY pattern_type;

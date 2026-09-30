@@ -112,7 +112,7 @@
       "question": "G11",
       "metric": "core_b_deposits_usd",
       "expected": 970122176.7,
-      "got": "970122176.7",
+      "got": "970122176.70",
       "ok": true
     },
     {
@@ -175,7 +175,7 @@
       "question": "G15",
       "metric": "principal_usd",
       "expected": 6994765.6,
-      "got": "6994765.6",
+      "got": "6994765.60",
       "ok": true
     }
   ],
