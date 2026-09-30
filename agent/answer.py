@@ -25,6 +25,7 @@ class Answer:
     citations: list = field(default_factory=list)  # ["BSA/AML Policy v7.2, section 4.2 ..., page 3", ...]
     suggestions: list = field(default_factory=list)
     party_id: str = ""
+    text: str = ""                                 # a full document (narrative preview), when there is one
 
 
 def _q(execute, sql):
@@ -118,13 +119,23 @@ def answer(question, execute, router=None):
         if v.get("notes") is not None and len(v["notes"]):
             cites += list(v["notes"]["citation"])
         head = _customer_headline(v)
-        used = "customer view (Gold, risk engine, notes)"
         if r.route == "NARRATIVE":
-            used = "customer view; narrative drafting is F7"
-        return Answer(question, r.route, r.rule, head, used, tables, cites, party_id=party_id)
+            from outputs.narrative import gather_evidence, render_narrative
+            md = render_narrative(gather_evidence(party_id, execute), status="PREVIEW - not saved")
+            name = v["profile"].iloc[0]["display_name"]
+            return Answer(question, r.route, r.rule,
+                          f"Draft case narrative for {name} (preview, not saved). To save it for approval: "
+                          f"python scripts/case.py draft --customer \"{name.title()}\" --author <you>",
+                          "case narrative template (outputs/narrative.py)", tables, cites, party_id=party_id, text=md)
+        return Answer(question, r.route, r.rule, head, "customer view (Gold, risk engine, notes)", tables, cites,
+                      party_id=party_id)
 
+    related = [(qid, sc) for qid, sc in (r.suggestions or []) if sc > 0]
+    if not related:
+        return Answer(question, r.route, r.rule, "I can't answer that from the bank's data or documents. "
+                      "See what I can answer with: python scripts/ask.py --list")
     return Answer(question, r.route, r.rule, "I'm not sure which question you mean. Closest reviewed questions:",
-                  "", suggestions=r.suggestions)
+                  "", suggestions=related)
 
 
 def log_question(a: Answer, execute, app_user=None):

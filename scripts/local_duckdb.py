@@ -27,6 +27,7 @@ GOLD_FILES = ["30_config.sql", "31_gold_core.sql", "32_risk_engine.sql"]
 SEMANTIC_FILES = ["40_metric_views.sql", "41_question_catalog.sql"]
 SEARCH_FILES = ["50_policy_chunks.sql", "51_doc_chunk.sql"]
 AGENT_FILES = ["60_audit.sql"]
+OUTPUT_FILES = ["70_case_output.sql"]
 
 # Snowflake functions DuckDB lacks, defined as macros with Snowflake semantics
 MACROS = [
@@ -121,6 +122,11 @@ def run_search(con):
 def run_agent(con):
     con.execute("CREATE SCHEMA IF NOT EXISTS audit")
     run_files(con, "60_agent", AGENT_FILES)
+
+
+def run_outputs(con):
+    con.execute("CREATE SCHEMA IF NOT EXISTS audit")
+    run_files(con, "70_outputs", OUTPUT_FILES)
 
 
 def executor(con):

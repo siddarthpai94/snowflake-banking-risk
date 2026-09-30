@@ -32,6 +32,9 @@ def show(a):
         for qid, _ in a.suggestions:
             print(f"  {qid}  {cat[qid]['question']}")
         print("Rephrase, or run: python scripts/ask.py --id <ID>")
+    if a.text:
+        print("\n" + a.text)
+        return
     with pd.option_context("display.max_columns", 20, "display.width", 180, "display.max_colwidth", 90):
         for title, df in a.tables:
             print(f"\n--- {title} ({len(df)} rows)")

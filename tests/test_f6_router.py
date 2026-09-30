@@ -95,7 +95,8 @@ def test_five_demo_questions_correct_three_runs_in_a_row(env):
         assert f"section {exp['section']}" in a["D04"].citations[0] and f"page {exp['page']}" in a["D04"].citations[0]
         # D05: narrative request resolves to the highest-risk customer with the right evidence
         assert a["D05"].route == "NARRATIVE"
-        assert a["D05"].headline.startswith(demo["D05"]["answer"]["name"].upper())
+        assert demo["D05"]["answer"]["name"].upper() in a["D05"].headline
+        assert a["D05"].text.startswith("# Case narrative: " + demo["D05"]["answer"]["name"])
         signals = dict(a["D05"].tables)["signals"]
         assert set(demo["D05"]["answer"]["expected_reason_codes"]) <= set(signals.rule_code)
         runs.append({k: v.headline for k, v in a.items()})
@@ -115,4 +116,8 @@ def test_questions_are_logged(env):
 def test_unknown_question_asks_instead_of_guessing(env):
     execute, *_ = env
     a = answer("Can you order me a pizza?", execute)
-    assert a.route == "CLARIFY" and a.suggestions and not a.tables
+    assert a.route == "CLARIFY" and not a.tables and "can't answer" in a.headline
+    b = answer("Tell me about alerts", execute)            # related but vague: offer the closest questions
+    assert b.route in ("CLARIFY", "CATALOG")
+    if b.route == "CLARIFY":
+        assert b.suggestions

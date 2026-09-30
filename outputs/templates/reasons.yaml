@@ -1,0 +1,45 @@
+# F7: one reviewed paragraph per risk rule, and the policy section it relates to.
+# {evidence} is the rule's evidence sentence from GOLD.RISK_SIGNAL. Page numbers are looked up from
+# SEARCH.POLICY_CHUNK when the narrative is built, never typed here.
+template_version: "1.0"
+reasons:
+  XCORE_CASH_30D:
+    heading: Cash split across the two cores
+    text: "{evidence}. Split this way, neither legacy monitoring system saw the combined total."
+    policy: "5.2 Red flags"
+  CTR_AGGREGATION_MISSED:
+    heading: Cross-core cash aggregation not reported
+    text: "{evidence}. The policy requires same-day cash on Core A and Core B to be aggregated for CTR purposes."
+    policy: "4.2 Aggregation"
+  NEAR_THRESHOLD_CASH:
+    heading: Repeated deposits just below the CTR threshold
+    text: "{evidence}. Repeated deposits just below $10,000 are a listed structuring red flag."
+    policy: "5.2 Red flags"
+  KYC_MISMATCH:
+    heading: Activity inconsistent with the KYC profile
+    text: "{evidence}. Activity materially above the expected profile calls for enhanced due diligence."
+    policy: "3.3 Enhanced due diligence"
+  KYC_INCONSISTENT_ACROSS_CORES:
+    heading: KYC profiles differ between the cores
+    text: "{evidence}. A material inconsistency between the two profiles must be resolved before any alert is closed."
+    policy: "3.4 Profiles held on two cores"
+  RAPID_IN_OUT:
+    heading: Rapid movement of funds
+    text: "{evidence}. This matches the policy's pass-through pattern."
+    policy: "9. Rapid movement of funds"
+  DORMANT_REACTIVATION:
+    heading: Large inflow after reactivation of a dormant account
+    text: "{evidence}. The policy treats this as a possible account takeover or pass-through."
+    policy: "8.3 Monitoring"
+  KYC_CONSISTENT_CASH:
+    heading: Mitigating factor - cash in line with KYC
+    text: "{evidence}."
+    policy: "3.2 Customer risk profile"
+actions:
+  escalate:            # risk score at or above escalate_min_score
+    text: "Escalate to the BSA Officer for SAR consideration. If a SAR is filed, it is due within 30 calendar days of initial detection."
+    policy: ["5.4 Action", "7.2 Deadline"]
+  review:
+    text: "Complete the investigation within 30 calendar days of the alert date and record the rationale for closure."
+    policy: ["6.2 Investigation", "6.3 Documentation"]
+escalate_min_score: 70
