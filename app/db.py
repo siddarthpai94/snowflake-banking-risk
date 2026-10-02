@@ -28,13 +28,19 @@ def _snowpark_session():
         return None
 
 
+SESSION_EXPIRED = (390114, 390111, 390112, 390113)    # token expired / session gone (e.g. after the laptop slept)
+
+
 def _connector_executor(connection_name):
     import snowflake.connector
-    con = snowflake.connector.connect(connection_name=connection_name, role=ROLE, warehouse=WAREHOUSE,
-                                      database=DATABASE, client_session_keep_alive=True)
 
-    def execute(sql):
-        cur = con.cursor()
+    def connect():
+        return snowflake.connector.connect(connection_name=connection_name, role=ROLE, warehouse=WAREHOUSE,
+                                           database=DATABASE, client_session_keep_alive=True)
+    state = {"con": connect()}
+
+    def run(sql):
+        cur = state["con"].cursor()
         try:
             cur.execute(sql)
             if cur.description is None:
@@ -43,6 +49,19 @@ def _connector_executor(connection_name):
             return pd.DataFrame(cur.fetchall(), columns=cols)
         finally:
             cur.close()
+
+    def execute(sql):
+        try:
+            return run(sql)
+        except snowflake.connector.errors.Error as e:      # expired session: log in again once, then retry
+            if getattr(e, "errno", None) not in SESSION_EXPIRED and "expired" not in str(e).lower():
+                raise
+            try:
+                state["con"].close()
+            except Exception:
+                pass
+            state["con"] = connect()
+            return run(sql)
     execute.backend = f"Snowflake ({connection_name}, connector)"
     return execute
 
