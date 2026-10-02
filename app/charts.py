@@ -34,7 +34,7 @@ def _money(x):
 
 def style(fig, height=300, unified=False):
     fig.update_layout(
-        height=height, margin=dict(l=8, r=16, t=28, b=8), paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
+        height=height, margin=dict(l=8, r=16, t=28, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family=f"{ui.FONT}, sans-serif", size=12, color=ui.MUTED),
         hoverlabel=dict(bgcolor=CARD_BG, bordercolor=CARD_BG, align="left",
                         font=dict(family=f"{ui.FONT}, sans-serif", size=13, color="#ffffff")),

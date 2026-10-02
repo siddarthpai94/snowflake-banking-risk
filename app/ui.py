@@ -511,7 +511,7 @@ section[data-testid="stSidebar"] {{ width: 290px !important; min-width: 290px !i
       radial-gradient(700px 260px at 88% 0px, color-mix(in srgb, {accent} 55%, transparent) 0%, transparent 70%),
       radial-gradient(520px 220px at 8% 40px, rgba(255,255,255,.07) 0%, transparent 70%),
       linear-gradient(118deg, {NAVY} 0%, color-mix(in srgb, {NAVY} 55%, {accent}) 100%) top / 100% 268px no-repeat,
-      linear-gradient(180deg, color-mix(in srgb, {accent} 7%, #f4f6fb) 268px, #f4f6fb 900px);
+      linear-gradient(180deg, var(--page) 268px, var(--page2) 1100px);
     background-attachment: local; }}
 .stApp {{ background: #f4f6fb; }}
 .rc-greet .hi {{ color: #ffffff !important; }}
@@ -521,6 +521,24 @@ section[data-testid="stSidebar"] {{ width: 290px !important; min-width: 290px !i
 .rc-title img {{ border-radius: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }}
 .rc-meta .rc-pill {{ box-shadow: 0 2px 8px rgba(0,0,0,.15); }}
 [data-testid="stPopover"] > div > button, [data-testid="stPopoverButton"] {{ box-shadow: 0 4px 14px rgba(0,0,0,.18); border-color: transparent !important; }}
+
+/* ---- page tint instead of white: cards and background take a light shade of the page colour ---- */
+:root {{ --card: color-mix(in srgb, {accent} 5%, #ffffff); --card2: color-mix(in srgb, {accent} 10%, #ffffff);
+         --page: color-mix(in srgb, {accent} 13%, #f4f6fb); --page2: color-mix(in srgb, {accent} 7%, #f4f6fb);
+         --cardline: color-mix(in srgb, {accent} 20%, #e7ebf3); }}
+.stApp {{ background: var(--page2) !important; }}
+[class*="st-key-card_"], [class*="st-key-kpicard_"], [class*="st-key-kpi_er_"], .st-key-narrative,
+[data-testid="stVerticalBlockBorderWrapper"] {{ background: var(--card) !important; border-color: var(--cardline) !important; }}
+.rc-stage, .rc-rule {{ background: var(--card) !important; border-color: var(--cardline) !important; }}
+.rc-stage {{ border-top-color: var(--accent) !important; }}
+.rc-rule {{ border-left-color: {RED} !important; }}
+.rc-rule.mit {{ border-left-color: {GREEN} !important; }}
+.rc-acct {{ background: linear-gradient(140deg, var(--card) 0%, var(--card2) 100%) !important; border-color: var(--cardline) !important; }}
+.rc-acct .foot {{ border-top-color: var(--cardline) !important; }}
+.rc-statement {{ background: var(--card) !important; border-color: var(--cardline) !important; }}
+.rc-txn {{ border-bottom-color: var(--cardline) !important; }}
+.rc-txn:hover {{ background: var(--card2); }}
+[data-testid="stExpander"], [data-testid="stExpander"] details {{ background: var(--card) !important; border-color: var(--cardline) !important; }}
 /* tabs that sit on the colour band */
 .st-key-toptabs [role="tablist"] {{ border-bottom-color: rgba(255,255,255,.18) !important; }}
 .st-key-toptabs [role="tablist"] [role="tab"] p {{ color: rgba(255,255,255,.72) !important; }}
