@@ -504,6 +504,30 @@ section[data-testid="stSidebar"] {{ width: 290px !important; min-width: 290px !i
 .st-key-examples button {{ border-radius: 999px !important; background: var(--accent-soft) !important;
     border-color: transparent !important; color: var(--accent) !important; }}
 .st-key-examples button p {{ color: var(--accent) !important; font-weight: 600 !important; }}
+
+/* ---- page background: a colour band in the page accent behind the header, cards overlap its lower edge ---- */
+[data-testid="stMain"] {{
+    background:
+      radial-gradient(700px 260px at 88% 0px, color-mix(in srgb, {accent} 55%, transparent) 0%, transparent 70%),
+      radial-gradient(520px 220px at 8% 40px, rgba(255,255,255,.07) 0%, transparent 70%),
+      linear-gradient(118deg, {NAVY} 0%, color-mix(in srgb, {NAVY} 55%, {accent}) 100%) top / 100% 268px no-repeat,
+      linear-gradient(180deg, color-mix(in srgb, {accent} 7%, #f4f6fb) 268px, #f4f6fb 900px);
+    background-attachment: local; }}
+.stApp {{ background: #f4f6fb; }}
+.rc-greet .hi {{ color: #ffffff !important; }}
+.rc-greet .dt {{ color: rgba(255,255,255,.72) !important; }}
+.rc-title h1 {{ color: #ffffff !important; }}
+.rc-title p {{ color: rgba(255,255,255,.78) !important; }}
+.rc-title img {{ border-radius: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }}
+.rc-meta .rc-pill {{ box-shadow: 0 2px 8px rgba(0,0,0,.15); }}
+[data-testid="stPopover"] > div > button, [data-testid="stPopoverButton"] {{ box-shadow: 0 4px 14px rgba(0,0,0,.18); border-color: transparent !important; }}
+/* tabs that sit on the colour band */
+.st-key-toptabs [role="tablist"] {{ border-bottom-color: rgba(255,255,255,.18) !important; }}
+.st-key-toptabs [role="tablist"] [role="tab"] p {{ color: rgba(255,255,255,.72) !important; }}
+.st-key-toptabs [role="tablist"] [role="tab"][aria-selected="true"] p {{ color: #ffffff !important; }}
+.st-key-toptabs [data-baseweb="tab-highlight"], .st-key-toptabs .react-aria-SelectionIndicator {{ background-color: #ffffff !important; }}
+.st-key-toptabs [data-baseweb="tab-border"] {{ background-color: rgba(255,255,255,.18) !important; }}
+.rc-hero {{ box-shadow: 0 18px 40px rgba(6,12,30,.28) !important; border: 1px solid rgba(255,255,255,.10) !important; }}
 /* ask box like a search field */
 .st-key-question input {{ font-size: 1rem !important; padding: 14px 16px !important; border-radius: 12px !important; }}
 </style>
@@ -515,6 +539,7 @@ LOGIN_CSS = f"""
 .stApp {{ background: radial-gradient(1200px 600px at 20% 0%, #1e3a8a 0%, {NAVY} 55%, #0a1326 100%) !important; }}
 [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"] {{ display:none !important; }}
 .block-container {{ max-width: 1100px; padding-top: 7vh; }}
+[data-testid="stMain"] {{ background: transparent !important; }}
 .st-key-login_card {{ background:#fff !important; border-radius: 16px !important; padding: 30px 32px 22px 32px !important;
     box-shadow: 0 24px 60px rgba(4,10,25,.45) !important; border: none !important; }}
 .rc-login-head {{ text-align:center; margin-bottom: 14px; }}

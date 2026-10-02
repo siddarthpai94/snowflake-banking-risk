@@ -642,7 +642,7 @@ def ask_and_cases():
     banner = st.container()          # always present, so the tabs below keep their place (and their selected tab)
     if st.session_state.get("flash"):
         banner.success(st.session_state.pop("flash"))
-    ask_tab, case_tab, log_tab = st.tabs(["Ask the copilot", "Case narratives", "Audit log"])
+    ask_tab, case_tab, log_tab = st.container(key="toptabs").tabs(["Ask the copilot", "Case narratives", "Audit log"])
     with ask_tab:
         ask_tab_body()
     with case_tab:
