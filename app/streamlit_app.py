@@ -136,6 +136,14 @@ def queue_frame(df):
     return out
 
 
+_cards = __import__("itertools").count()
+
+
+def card(parent=None):
+    """A white bordered card. The key lets the stylesheet find it on every Streamlit version."""
+    return (parent or st).container(border=True, key=f"card_{next(_cards)}")
+
+
 # ---------------------------------------------------------------- sign in
 def sign_in_page():
     ui.set_page("Sign in")
@@ -192,19 +200,22 @@ CAN_APPROVE = ME["role"] in auth.CAN_APPROVE
 
 # ---------------------------------------------------------------- navigation and top bar
 PAGES = ["Executive overview", "Data integration health", "Alert queue & customer", "Ask & cases"]
+NAV_ICON = {"Executive overview": ":material/dashboard:", "Data integration health": ":material/database:",
+            "Alert queue & customer": ":material/person_search:", "Ask & cases": ":material/forum:"}
 st.session_state.setdefault("page", PAGES[0])
 if "nav_to" in st.session_state:
     st.session_state["page"] = st.session_state.pop("nav_to")
 with st.sidebar:
-    st.html('<div class="rc-wordmark"><div class="n">Risk Copilot</div></div>')
-    st.radio("Screen", PAGES, key="page", label_visibility="collapsed")
+    st.html(f'<div class="rc-brand">{ui.logo_svg(34)}<div><div class="n">Risk Copilot</div>'
+            f'<div class="s">Financial crimes</div></div></div>')
+    st.radio("Screen", PAGES, key="page", label_visibility="collapsed", format_func=lambda p: f"{NAV_ICON[p]}  {p}")
     st.divider()
-    st.html('<div class="rc-side-foot">Kestrel Valley Bank and Pellbrook Savings Bank, one bank after the merger.<br>'
-            'Synthetic demo data; every person is fictional.</div>')
+    st.html('<div class="rc-side-card"><b>Synthetic demo</b>Kestrel Valley Bank and Pellbrook Savings Bank, '
+            'one bank after the merger. Every person is fictional.</div>')
 ui.set_page(st.session_state["page"])
 
 trail, prof = st.columns([5, 1.4], vertical_alignment="center")
-trail.html(f'<div class="rc-trail">Risk Copilot&nbsp;&nbsp;/&nbsp;&nbsp;<b>{esc(st.session_state["page"])}</b></div>')
+trail.html(ui.greeting_bar(ME["name"].split()[0]))
 with prof.popover(f"{ME['initials']}  ·  {ME['name']}", width="stretch"):
     st.html(f'<div class="rc-profile-card"><div class="rc-avatar">{esc(ME["initials"])}</div><div>'
             f'<div class="n">{esc(ME["name"])}</div><div class="t">{esc(ME["title"])}</div></div></div>'
@@ -232,6 +243,7 @@ EVIDENCE = {   # KPI -> the rows behind it
     "G02": "SELECT party_id, display_name, cores, core_a_key, core_b_key, link_reasons FROM GOLD.PARTY "
            "WHERE cores = 2 ORDER BY display_name LIMIT 500",
 }
+KPI_ICON = {"G02": "users", "G03": "bell", "G04": "percent", "G06": "clock", "G09": "scale", "G10": "building"}
 KPIS = [("G02", "Unique customers", "unique_customers", "{:,.0f}"),
         ("G03", "Alerts in August", "alerts", "{:,.0f}"),
         ("G04", "False positives, Q2", "false_positive_rate_pct", "{:.1f}%"),
@@ -273,6 +285,7 @@ def overview():
     for col, (qid, label, field, fmt) in zip(cols, KPIS):
         _, df = catalog_answer(qid)
         with col.container(border=True, key=f"kpicard_{qid}"):
+            st.html(f'<div class="rc-kpi-ic">{ui.icon(KPI_ICON[qid], ui.ACCENT, ui.ACCENT_SOFT, 38)}</div>')
             st.metric(label, fmt.format(float(df.iloc[0][field])))
             st.caption(md_safe(kpi_context(qid, df)))
             st.button("View rows", key=f"kpi_btn_{qid}", type="tertiary", on_click=_pick_kpi, args=(f"{qid} {label}",))
@@ -281,7 +294,7 @@ def overview():
     if pick != "-":
         qid = pick.split()[0]
         head, df = catalog_answer(qid)
-        with st.container(border=True):
+        with card():
             ui.card_title(clean_text(_commas(head)), "Reviewed question: " + clean_text(by_id()[qid]["question"]))
             rows = q(EVIDENCE[qid])
             ui.table(rows, height=300)
@@ -289,7 +302,7 @@ def overview():
                 st.code(by_id()[qid]["sql"], language="sql")
 
     ui.section("Where the risk is", f"one queue across both cores and the risk engine · {int(h.queue_size)} items")
-    with st.container(border=True):
+    with card():
         ui.card_title("Top of the work queue", "Select a customer to open their evidence")
         top = q("SELECT queue_rank, display_name AS customer, origin, priority_score, reasons, party_id "
                 "FROM GOLD.ALERT_QUEUE WHERE queue_rank <= 10 ORDER BY queue_rank")
@@ -300,14 +313,14 @@ def overview():
         if i is not None and st.button(f"Open {ui.title_name(top.iloc[i]['customer'])}", type="primary"):
             go("Alert queue & customer", party_id=top.iloc[i]["party_id"])
     left, right = st.columns(2, gap="medium")
-    with left.container(border=True):
+    with card(left):
         ui.card_title("How often each risk rule fires", "Customers flagged by each rule")
         rules = q("SELECT rule_code, COUNT(*) AS customers FROM GOLD.RISK_SIGNAL GROUP BY rule_code ORDER BY customers DESC")
         rules["rule"] = rules["rule_code"].map(ui.humanize_code)
         st.altair_chart(hbar(rules, "rule", "customers", "Customers"), width="stretch")
         mix = q("SELECT origin, COUNT(*) AS items FROM GOLD.ALERT_QUEUE GROUP BY origin ORDER BY items DESC")
         mix["origin"] = mix["origin"].map(ui.ORIGIN_NAME).fillna(mix["origin"])
-    with right.container(border=True):
+    with card(right):
         ui.card_title("Where the queue comes from", "Queue items by source")
         st.altair_chart(hbar(mix, "origin", "items", "Queue items"), width="stretch")
 
@@ -373,7 +386,7 @@ def data_health():
     ui.section("Data-quality exceptions", "Every record that breaks a rule, with its source file and row")
     dq = q("SELECT rule_id, COUNT(*) AS records FROM SILVER.DQ_EXCEPTIONS GROUP BY rule_id ORDER BY records DESC")
     left, right = st.columns([2, 3], gap="medium")
-    with left.container(border=True):
+    with card(left):
         dqc = dq.copy()
         dqc["rule"] = dqc["rule_id"].map(ui.humanize_code)
         ui.card_title("Records flagged by each check")
@@ -444,8 +457,8 @@ def cash_story(cash, t):
 def queue_and_customer():
     ui.page_header("Alert queue & customer", "One ranked queue across both cores; every score shows its reasons and evidence",
                    meta())
-    with st.container(border=True):
-        f1, f2, f3 = st.columns([2, 2, 3])
+    with card():
+        f1, f2, f3 = st.columns([3, 2, 3])
         origins = f1.multiselect("Origin", ["RISK_ENGINE", "LEGACY_CORE_A", "LEGACY_CORE_B"],
                                  default=["RISK_ENGINE", "LEGACY_CORE_A", "LEGACY_CORE_B"],
                                  format_func=lambda o: ui.ORIGIN_NAME.get(o, o))
@@ -482,25 +495,24 @@ def queue_and_customer():
     rank = f"{int(risk.queue_rank[0])} of {int(risk.queue_size[0])}" if ranked else "not queued"
 
     ui.section("Customer", "One real customer, resolved across both cores")
-    with st.container(border=True):
-        ring, body = st.columns([1, 7], vertical_alignment="center")
+    with card():
+        body, ring = st.columns([7, 1], vertical_alignment="center")
+        ids = []
+        if prof.core_a_key:
+            ids.append(pill(f"Core A {prof.core_a_key}", "core-a"))
+        if prof.core_b_key:
+            ids.append(pill(f"Core B {str(prof.core_b_key)[:13]}…", "core-b"))
+        kind = "Business" if prof.party_kind == "ORG" else "Person"
+        cash_total = float(cash30["cash_usd"].astype(float).sum()) if len(cash30) else 0.0
+        name = ui.title_name(prof.display_name)
+        initials = "".join(w[0] for w in name.split()[:2]).upper()
+        body.html(ui.profile_header(
+            name, initials, "".join(ids) + pill(kind) + pill("In both cores" if int(prof.cores) == 2 else "In one core", "accent"),
+            f'<div class="rc-kv"><div><span>Queue rank</span><b>{esc(rank)}</b></div>'
+            f'<div><span>Legacy alerts</span><b>{len(v["alerts"])}</b></div>'
+            f'<div><span>Cash in, 30 days</span><b>{money(cash_total)}</b></div>'
+            f'<div><span>City</span><b>{esc(str(prof.city or "").title())}, {esc(prof.state or "")}</b></div></div>'))
         ring.html(ui.score_ring(score, 104))
-        with body:
-            st.subheader(ui.title_name(prof.display_name))
-            ids = []
-            if prof.core_a_key:
-                ids.append(pill(f"Core A {prof.core_a_key}", "core-a"))
-            if prof.core_b_key:
-                ids.append(pill(f"Core B {str(prof.core_b_key)[:13]}…", "core-b"))
-            kind = "Business" if prof.party_kind == "ORG" else "Person"
-            cash_total = float(cash30["cash_usd"].astype(float).sum()) if len(cash30) else 0.0
-            st.html(f'<div class="rc-meta" style="justify-content:flex-start">{"".join(ids)}{pill(kind)}'
-                    f'{pill("In both cores" if int(prof.cores) == 2 else "In one core", "accent")}</div>'
-                    f'<div class="rc-kv"><div><span>Queue rank</span><b>{esc(rank)}</b></div>'
-                    f'<div><span>Risk score</span><b>{score:.0f}</b></div>'
-                    f'<div><span>Legacy alerts</span><b>{len(v["alerts"])}</b></div>'
-                    f'<div><span>Cash in, 30 days</span><b>{money(cash_total)}</b></div>'
-                    f'<div><span>City</span><b>{esc(str(prof.city or "").title())}, {esc(prof.state or "")}</b></div></div>')
         links = [ui.humanize_code(x) for x in str(prof.link_reasons or "").split(";") if x]
         st.html('<div class="rc-label">Linked across cores by</div>'
                 + (ui.chips(links) if links else ui.chips(["Single record in one core"])))
@@ -521,7 +533,7 @@ def queue_and_customer():
         title = (f"Each bank saw under {money(thresholds().get('thresholds.legacy_per_core_cash_30d_usd', 30000))}. "
                  f"Together: {money(a_usd + b_usd)}." if a_usd and b_usd else f"Cash deposits: {money(a_usd + b_usd)} in 30 days")
         ui.section("Cash across both cores, last 30 days", "What each legacy system saw against what the bank really holds")
-        with st.container(border=True):
+        with card():
             st.html(f'<div style="font-size:1.15rem;font-weight:650;color:{ui.INK}">{esc(title)}</div>'
                     f'<div style="color:{ui.MUTED};font-size:.88rem;margin:2px 0 4px 0">Core A {money(a_usd)} + Core B '
                     f'{money(b_usd)} in {len(d)} deposits, the largest {money(d.amount_usd.max())}.</div>')
@@ -531,9 +543,14 @@ def queue_and_customer():
 
     t1, t2, t3, t4 = st.tabs(["Accounts and cash", "KYC", "Alerts and notes", "Loans"])
     with t1:
-        ui.table(numeric(v["accounts"]))
-        ui.card_title(f"Cash deposits in the last 30 days: {len(cash)}")
-        ui.table(cash)
+        accts = numeric(v["accounts"])
+        st.html(ui.account_cards(accts))
+        if len(cash):
+            ui.card_title(f"Cash deposits, last 30 days", f"{len(cash)} deposits, newest first")
+            st.html(ui.statement(cash))
+        with st.expander("Full records with source file and row"):
+            ui.table(accts)
+            ui.table(cash)
     with t2:
         ui.table(numeric(v["kyc"]))
     with t3:
@@ -573,10 +590,10 @@ def rule_words(rule):
 
 
 def ask_tab_body():
-    with st.container(border=True):
+    with card():
         ui.card_title("Ask in plain English", "Readable rules route each question to a reviewed SQL question, document "
                       "search, the customer view or a case narrative. If no rule is sure, it says so.")
-        ex_cols = st.columns(len(EXAMPLES))
+        ex_cols = st.container(key="examples").columns(len(EXAMPLES))
         for col, ex, label in zip(ex_cols, EXAMPLES, EXAMPLE_LABELS):
             if col.button(label, help=ex, width="stretch"):
                 st.session_state["question"] = ex
@@ -587,7 +604,7 @@ def ask_tab_body():
     if st.session_state.get("last_logged") != (ME["username"], text):     # one audit row per question, not per rerun
         log_question(a, executor(), app_user=st.session_state["user"])
         st.session_state["last_logged"] = (ME["username"], text)
-    with st.container(border=True):
+    with card():
         answered_as = clean_text(re.sub(r"\s*\([^)]*\.py\)", "", str(a.answered_as or "")))[:90]
         st.html(f'<div class="rc-meta" style="justify-content:flex-start;margin-bottom:10px">'
                 f'{pill("Answered by: " + ui.ROUTE_NAME.get(a.route, ui.humanize_code(a.route)), ROUTE_KIND.get(a.route, ""), dot=True)}'
@@ -635,7 +652,7 @@ def case_tab_body():
     md, status = C.final_text(pick, executor())
     out = C.get_output(pick, executor())
     row = outs[outs.output_id == pick].iloc[0]
-    with st.container(border=True):
+    with card():
         head = st.empty()                 # filled after the buttons, so a Verify click shows at once
         b1, b2, b3, b4, b5 = st.columns([2, 2, 2, 2, 3], vertical_alignment="bottom")
         comment = b5.text_input("Comment", key="case_comment", placeholder="Optional, saved with the decision")

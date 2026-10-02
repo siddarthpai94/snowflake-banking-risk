@@ -32,7 +32,7 @@ PAGE_THEME = {
     "Alert queue & customer": ("#c2410c", "#fff0e6"),
     "Ask & cases": ("#6d28d9", "#f1eafe"),
 }
-ACCENT = PAGE_THEME["Executive overview"][0]       # default, replaced per page by set_page()
+ACCENT, ACCENT_SOFT = PAGE_THEME["Executive overview"]   # default, replaced per page by set_page()
 
 CORE_NAME = {"core_a": "Core A · Kestrel Valley", "core_b": "Core B · Pellbrook", "core_c": "Core C"}
 CORE_SHORT = {"core_a": "Core A", "core_b": "Core B", "core_c": "Core C"}
@@ -419,6 +419,93 @@ h1, h2, h3 {{ color: var(--ink); letter-spacing: -.01em; }}
 .rc-answer {{ font-size:1.08rem; font-weight:600; line-height:1.5; color: var(--ink); border-left:4px solid var(--accent);
     padding:8px 0 8px 14px; background: var(--accent-soft); border-radius:0 8px 8px 0; }}
 .rc-mono {{ font-variant-numeric: tabular-nums; letter-spacing: .01em; }}
+/* ---- banking-app layer ---- */
+.stApp {{ background: #f4f6fb; }}
+[data-testid="stVerticalBlockBorderWrapper"] {{ border: 1px solid #e7ebf3 !important; border-radius: 16px !important;
+    box-shadow: 0 1px 3px rgba(16,24,40,.06), 0 1px 2px rgba(16,24,40,.03) !important; }}
+[class*="st-key-card_"], [class*="st-key-kpicard_"], [class*="st-key-kpi_er_"], .st-key-narrative {{
+    background: #fff !important; border: 1px solid #e7ebf3 !important; border-radius: 16px !important;
+    box-shadow: 0 1px 3px rgba(16,24,40,.06), 0 1px 2px rgba(16,24,40,.03) !important; }}
+[data-testid="stDataFrame"] {{ border: 1px solid #edf0f6; border-radius: 12px; }}
+[data-testid="stExpander"] details {{ border-radius: 14px !important; border-color: #e7ebf3 !important; }}
+
+/* sidebar: brand, icon nav with a solid highlight */
+section[data-testid="stSidebar"] {{ width: 290px !important; min-width: 290px !important; }}
+.rc-brand {{ display:flex; align-items:center; gap:10px; padding: 4px 4px 22px 4px; }}
+.rc-brand .n {{ color:#fff; font-weight:700; font-size:1.08rem; letter-spacing:-.01em; }}
+.rc-brand .s {{ color:#93a4c6; font-size:.75rem; }}
+[data-testid="stSidebar"] [role="radiogroup"] {{ gap: 4px; }}
+[data-testid="stSidebar"] [role="radiogroup"] label {{ padding: 11px 14px; border-radius: 12px; }}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked),
+[data-testid="stSidebar"] [role="radiogroup"] label[data-selected="true"] {{ background: {accent} !important; box-shadow: none !important; }}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p,
+[data-testid="stSidebar"] [role="radiogroup"] label[data-selected="true"] p {{ color:#fff !important; font-weight:600; }}
+[data-testid="stSidebar"] [role="radiogroup"] p {{ color:#c8d3ea; display:flex; align-items:center; gap:10px;
+    white-space: nowrap; font-size: .9rem !important; }}
+[data-testid="stSidebar"] [role="radiogroup"] [data-testid="stIconMaterial"] {{ font-size: 1.25rem; }}
+.rc-side-card {{ background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); border-radius: 12px;
+    padding: 12px 14px; color:#aebbd6; font-size:.78rem; line-height:1.5; }}
+.rc-side-card b {{ color:#fff; font-weight:600; display:block; margin-bottom:2px; font-size:.82rem; }}
+
+/* greeting bar */
+.rc-greet {{ padding-top: 2px; }}
+.rc-greet .hi {{ font-size: 1.02rem; font-weight: 650; color: var(--ink); }}
+.rc-greet .dt {{ font-size: .8rem; color: var(--muted); margin-top: 1px; }}
+
+/* page header: icon tile + title, no heavy rule */
+.rc-top {{ border-bottom: none !important; padding-bottom: 4px !important; margin: 14px 0 16px 0 !important; align-items:center !important; }}
+.rc-title {{ display:flex; align-items:center; gap:14px; }}
+.rc-title h1 {{ font-size: 1.6rem !important; }}
+.rc-title p {{ margin-top: 3px !important; font-size: .9rem !important; }}
+
+/* KPI tiles like account summaries */
+.rc-kpi-ic {{ margin-bottom: 8px; }}
+[class*="st-key-kpicard_"] [data-testid="stMetricValue"] {{ font-size: 1.65rem !important; }}
+
+/* hero band softer and rounder */
+.rc-hero {{ border-left: none !important; border-radius: 20px !important;
+    background: linear-gradient(125deg, {NAVY} 0%, #1c3270 60%, {accent} 140%) !important; padding: 24px 28px !important; }}
+.rc-hero .stat {{ border-radius: 14px !important; }}
+
+/* customer profile */
+.rc-cust {{ display:flex; gap:18px; align-items:flex-start; }}
+.rc-cust .body {{ flex:1; }}
+.rc-cust .nm {{ font-size:1.45rem; font-weight:700; color: var(--ink); margin: 2px 0 8px 0; }}
+.rc-avatar.big {{ width:64px; height:64px; font-size:1.3rem; background: linear-gradient(135deg, var(--accent), {NAVY}); flex:none; }}
+
+/* account tiles */
+.rc-accts {{ display:grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin: 4px 0 6px 0; }}
+.rc-acct {{ background: linear-gradient(140deg, #ffffff 0%, #f6f8fd 100%); border:1px solid #e7ebf3; border-radius: 16px;
+    padding: 16px 18px; box-shadow: 0 1px 3px rgba(16,24,40,.06); }}
+.rc-acct .top {{ display:flex; justify-content:space-between; align-items:center; }}
+.rc-acct .prod {{ font-weight: 650; color: var(--ink); font-size: .95rem; }}
+.rc-acct .num {{ color: var(--muted); font-size: .9rem; letter-spacing: .08em; margin: 14px 0 2px 0; font-variant-numeric: tabular-nums; }}
+.rc-acct .bal {{ font-size: 1.45rem; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }}
+.rc-acct .foot {{ display:flex; justify-content:space-between; color: var(--muted); font-size: .78rem; margin-top: 10px;
+    padding-top: 10px; border-top: 1px dashed #e1e6ef; }}
+.rc-acct.closed {{ opacity: .6; }}
+
+/* statement list */
+.rc-statement {{ background:#fff; border:1px solid #e7ebf3; border-radius: 16px; overflow:hidden; }}
+.rc-txn {{ display:flex; align-items:center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid #f0f2f7; }}
+.rc-txn:last-child {{ border-bottom: none; }}
+.rc-txn .d {{ width: 46px; height: 46px; border-radius: 12px; background: var(--accent-soft); color: var(--accent);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.05; flex:none; }}
+.rc-txn .d b {{ font-size: 1.05rem; }}
+.rc-txn .d span {{ font-size: .7rem; font-weight:600; text-transform: uppercase; }}
+.rc-txn .w {{ flex:1; }}
+.rc-txn .t {{ font-weight: 600; color: var(--ink); font-size: .93rem; }}
+.rc-txn .s {{ color: var(--muted); font-size: .8rem; margin-top: 2px; font-variant-numeric: tabular-nums; }}
+.rc-txn .r {{ display:flex; align-items:center; gap: 12px; }}
+.rc-txn .a {{ font-weight: 700; color: {GREEN}; font-size: 1rem; min-width: 100px; text-align:right; font-variant-numeric: tabular-nums; }}
+
+.rc-stage {{ border-radius: 16px !important; border: 1px solid #e7ebf3 !important; border-top: 3px solid var(--accent) !important;
+    box-shadow: 0 1px 3px rgba(16,24,40,.06); }}
+.st-key-examples button {{ border-radius: 999px !important; background: var(--accent-soft) !important;
+    border-color: transparent !important; color: var(--accent) !important; }}
+.st-key-examples button p {{ color: var(--accent) !important; font-weight: 600 !important; }}
+/* ask box like a search field */
+.st-key-question input {{ font-size: 1rem !important; padding: 14px 16px !important; border-radius: 12px !important; }}
 </style>
 """
 
@@ -462,9 +549,9 @@ def esc(x):
 
 def set_page(page):
     """Apply the stylesheet with this page's accent; charts read ui.ACCENT."""
-    global ACCENT
+    global ACCENT, ACCENT_SOFT
     accent, soft = PAGE_THEME.get(page, PAGE_THEME["Executive overview"])
-    ACCENT = accent
+    ACCENT, ACCENT_SOFT = accent, soft
     st.html(_css(accent, soft))
     if page == "Sign in":
         st.html(LOGIN_CSS)
@@ -479,7 +566,8 @@ def chips(items):
 
 
 def page_header(title, subtitle, meta_html=""):
-    st.html(f'<div class="rc-top"><div class="rc-title"><h1>{esc(title)}</h1><p>{esc(subtitle)}</p></div>'
+    ic = icon(PAGE_ICON[title], ACCENT, ACCENT_SOFT, 48) if title in PAGE_ICON else ""
+    st.html(f'<div class="rc-top"><div class="rc-title">{ic}<div><h1>{esc(title)}</h1><p>{esc(subtitle)}</p></div></div>'
             f'<div class="rc-meta">{meta_html}</div></div>')
 
 
@@ -540,3 +628,91 @@ def stepper(steps):
 
 def legend(items):
     return '<div class="rc-legend">' + "".join(f'<span><i style="background:{c}"></i>{esc(t)}</span>' for t, c in items) + "</div>"
+
+
+# ---------------------------------------------------------------- banking-app components
+ICON_PATHS = {   # simple 24x24 outline icons drawn for this app
+    "users": '<circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/>'
+             '<path d="M15.5 14.2c3 .2 5.5 2.6 5.5 5.8"/>',
+    "bell": '<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+    "percent": '<path d="M5 19L19 5"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>',
+    "clock": '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    "scale": '<path d="M12 4v16M6 20h12M4 8h16"/><path d="M7 8l-3 6a3 3 0 0 0 6 0zM17 8l-3 6a3 3 0 0 0 6 0z"/>',
+    "building": '<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/>',
+    "dashboard": '<rect x="3" y="3" width="8" height="10" rx="2"/><rect x="13" y="3" width="8" height="6" rx="2"/>'
+                 '<rect x="13" y="11" width="8" height="10" rx="2"/><rect x="3" y="15" width="8" height="6" rx="2"/>',
+    "layers": '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
+    "search": '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>',
+    "chat": '<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
+    "card": '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
+    "check": '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 10"/>',
+    "link": '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    "alert": '<path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17h.01"/>',
+}
+PAGE_ICON = {"Executive overview": "dashboard", "Data integration health": "layers",
+             "Alert queue & customer": "search", "Ask & cases": "chat"}
+
+
+def icon(name, color=None, bg=None, size=40):
+    """An icon in a soft rounded tile, as an <img> (st.html strips inline SVG)."""
+    import base64
+    color = color or ACCENT
+    tile = f'<rect width="24" height="24" rx="7" fill="{bg}"/>' if bg else ""
+    inner = (f'<g transform="translate(4.8 4.8) scale(.6)" fill="none" stroke="{color}" stroke-width="2.4" '
+             f'stroke-linecap="round" stroke-linejoin="round">{ICON_PATHS[name]}</g>') if bg else (
+             f'<g fill="none" stroke="{color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+             f'{ICON_PATHS[name]}</g>')
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24">{tile}{inner}</svg>'
+    return (f'<img alt="" width="{size}" height="{size}" style="display:block" '
+            f'src="data:image/svg+xml;base64,{base64.b64encode(svg.encode()).decode()}"/>')
+
+
+def greeting_bar(first_name, now=None):
+    import datetime as _dt
+    now = now or _dt.datetime.now()
+    part = "morning" if now.hour < 12 else "afternoon" if now.hour < 17 else "evening"
+    return (f'<div class="rc-greet"><div class="hi">Good {part}, {esc(first_name)}</div>'
+            f'<div class="dt">{now.strftime("%A, %d %B %Y").replace(" 0", " ")}</div></div>')
+
+
+def mask(acct):
+    """core_a:2584925259 -> •••• 5259 (the full number stays in the records below)."""
+    tail = str(acct).split(":")[-1]
+    return "•••• " + tail[-4:]
+
+
+def account_cards(accounts):
+    """Accounts as bank-app tiles: product, status, masked number, balance."""
+    out = []
+    for r in accounts.itertuples():
+        core = CORE_SHORT.get(r.source_system, humanize_code(r.source_system))
+        status = str(r.status or "").upper()
+        kind = "green" if status == "OPEN" else "amber" if status == "DORMANT" else ""
+        out.append(f'<div class="rc-acct {"closed" if status == "CLOSED" else ""}">'
+                   f'<div class="top"><span class="prod">{esc(humanize_code(r.product_type))}</span>'
+                   f'{pill(humanize_code(status), kind, dot=True)}</div>'
+                   f'<div class="num">{esc(mask(r.account_id))}</div>'
+                   f'<div class="bal">${float(r.balance_usd or 0):,.2f}</div>'
+                   f'<div class="foot"><span>{esc(core)}</span><span>Branch {esc(r.branch)}</span></div></div>')
+    return '<div class="rc-accts">' + "".join(out) + "</div>"
+
+
+def statement(cash):
+    """Cash deposits as a statement: date, where, account, amount, CTR status."""
+    rows = []
+    for r in cash.sort_values("posted_at", ascending=False).itertuples():
+        ts = pd.to_datetime(r.posted_at)
+        core = CORE_SHORT.get(r.source_system, humanize_code(r.source_system))
+        ctr = bool(r.ctr_filed) if r.ctr_filed is not None and not pd.isna(r.ctr_filed) else False
+        rows.append(f'<div class="rc-txn"><div class="d"><b>{ts.day}</b><span>{ts.strftime("%b")}</span></div>'
+                    f'<div class="w"><div class="t">Cash deposit · {esc(r.branch)}</div>'
+                    f'<div class="s">{esc(core)} · {esc(mask(r.account_id))} · {ts.strftime("%H:%M")}</div></div>'
+                    f'<div class="r">{pill("CTR filed", "green") if ctr else pill("No CTR", "red")}'
+                    f'<div class="a">+${float(r.amount_usd):,.2f}</div></div></div>')
+    return '<div class="rc-statement">' + "".join(rows) + "</div>"
+
+
+def profile_header(name, initials, chips_html, kv_html):
+    return (f'<div class="rc-cust"><div class="rc-avatar big">{esc(initials)}</div><div class="body">'
+            f'<div class="nm">{esc(name)}</div><div class="rc-meta" style="justify-content:flex-start">{chips_html}</div>'
+            f'{kv_html}</div></div>')

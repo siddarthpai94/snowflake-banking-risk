@@ -105,7 +105,7 @@ def test_every_screen_renders(app):
 def _draft_for(at, name):
     at.radio(key="page").set_value("Alert queue & customer").run()
     [t for t in at.text_input if t.label == "Find a customer by name"][0].input(name).run()
-    assert name in [h.value for h in at.subheader]
+    assert any(name in h.proto.body for h in at.get("html"))           # the customer card
     draft = [b for b in at.button if b.label.startswith("Draft")][0]
     return draft
 
