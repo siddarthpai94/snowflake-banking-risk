@@ -28,7 +28,7 @@ A risk, fraud and regulatory intelligence copilot on Snowflake for the Snowflake
 git clone <repo-url> sahasranshu-risk-copilot && cd sahasranshu-risk-copilot
 pip install -r requirements.txt
 python -m data_gen.generate                        # about 65 s; writes data/out/demo (58 MB)
-python -m pytest tests -q                          # 102 acceptance tests, about 30 s
+python -m pytest tests -q                          # 108 acceptance tests, about 35 s
 python scripts/local_duckdb.py --data data/out/demo # optional pre-flight of the Silver and Gold SQL on DuckDB
 snow connection add                                # once: your Snowflake trial account
 scripts/build_all.sh --setup                       # roles, warehouse, Bronze load, every build step, 3 acceptance checks
@@ -36,6 +36,29 @@ streamlit run app/streamlit_app.py                 # the app
 ```
 
 On Windows PowerShell: `powershell -ExecutionPolicy Bypass -File scripts\build_all.ps1 -Setup`. The build stops at the first error; fix it and rerun with `-SkipLoad` (`--skip-load`). It ends with the matching evaluation (0 false merges), the F4 risk check (PASS) and the golden check (15 of 15).
+
+### Signing in to the app
+
+The app opens on a sign-in page. Three fictional demo users, all with the password `Demo@2026`:
+
+| Username | Person | Role | Can do |
+|---|---|---|---|
+| `analyst` | Maya Collins, BSA analyst | Analyst | View every screen, ask questions |
+| `investigator` | Daniel Ortiz, financial crimes investigator | Investigator | Also draft case narratives |
+| `approver` | Sarah Whitfield, BSA officer | Approver | Also approve or reject cases, never their own |
+
+The profile and **Sign out** are at the top right. Five wrong passwords lock that username for 30 seconds. Passwords are
+stored only as salted PBKDF2-SHA256 hashes in `config/users.yaml`; make a new hash with
+`python app/auth.py hash "new password"`. Roles are checked again in `outputs/case_store.py`, not just by the buttons.
+This is a demo gate: in production the bank's single sign-on and Snowflake roles are the access control.
+
+To run the app offline without Snowflake, build a local copy and point the app at it (PowerShell):
+
+```powershell
+python scripts/local_duckdb.py --data data/out/demo --db data/out/app.duckdb
+$env:RISK_COPILOT_BACKEND = "duckdb:data/out/app.duckdb"
+streamlit run app/streamlit_app.py
+```
 
 The steps the build runs, if you want them one at a time (`snow sql -f` each):
 

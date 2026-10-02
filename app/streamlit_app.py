@@ -12,7 +12,7 @@ Every summary number opens to the rows behind it (source file and row) in three 
 Presentation lives in app/ui.py; this file only arranges the screens.
 """
 import io
-import os
+import re
 import sys
 from pathlib import Path
 
@@ -23,8 +23,9 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from db import get_executor, numeric  # noqa: E402
+import auth  # noqa: E402
 import ui  # noqa: E402
-from ui import esc, pill  # noqa: E402
+from ui import clean_text, esc, pill  # noqa: E402
 
 from agent.answer import answer, customer_view, log_question  # noqa: E402
 from agent.router import find_customers  # noqa: E402
@@ -35,13 +36,13 @@ from semantic.catalog import by_id, headline, run_question  # noqa: E402
 
 RULE_LABEL = ui.RULE_LABEL
 AS_OF = "31 Aug 2026"
-st.set_page_config(page_title="Risk Copilot", page_icon="🛡️", layout="wide")
-ui.inject_css()
+st.set_page_config(page_title="Sahasranshu Risk Copilot", layout="wide")
 
 
 def md_safe(text):
-    """Markdown with dollar amounts shown as money, not as maths ('$' starts a formula in Streamlit)."""
-    return _commas(str(text or "")).replace("$", "\\$")
+    """Display Markdown: plain English (no codes, underscores or brackets), and dollar amounts shown as money,
+    not as maths ('$' starts a formula in Streamlit)."""
+    return clean_text(_commas(str(text or ""))).replace("$", "\\$")
 
 
 def money(x):
@@ -49,20 +50,11 @@ def money(x):
 
 
 def style(chart):
-    return (chart.configure_view(strokeWidth=0)
-            .configure_axis(labelColor=ui.MUTED, titleColor=ui.MUTED, gridColor="#edf0f5", domainColor="#c9d2e0",
-                            labelFontSize=11, titleFontSize=11, titleFontWeight=600)
-            .configure_legend(labelColor=ui.INK, titleColor=ui.MUTED, orient="top"))
+    return ui.chart_style(chart)
 
 
-def hbar(df, label, value, title, color=ui.ACCENT):
-    """Single-series horizontal bars, sorted by value, with hover tooltips."""
-    base = alt.Chart(df).encode(y=alt.Y(f"{label}:N", sort="-x", title=None, axis=alt.Axis(labelLimit=260, ticks=False)),
-                                x=alt.X(f"{value}:Q", title=title, axis=alt.Axis(grid=True)),
-                                tooltip=[alt.Tooltip(f"{label}:N", title="Item"), alt.Tooltip(f"{value}:Q", title=title)])
-    bars = base.mark_bar(color=color, cornerRadiusEnd=4, height=16)
-    text = base.mark_text(align="left", dx=4, color=ui.INK, fontSize=11).encode(text=f"{value}:Q")
-    return style((bars + text).properties(height=alt.Step(26)))
+def hbar(df, label, value, title, color=None):
+    return ui.hbar(df, label, value, title, color=color)
 
 
 # ---------------------------------------------------------------- data access
@@ -80,7 +72,7 @@ def q_safe(sql, cached=True):
     try:
         return q(sql) if cached else numeric(executor()(sql))
     except Exception as e:                       # a table this backend does not have
-        st.info(f"Not available on this backend ({type(e).__name__}).")
+        st.info("This view is available on the Snowflake build only.")
         return None
 
 
@@ -114,14 +106,14 @@ def backend_label():
 
 
 def meta():
-    return (pill("Synthetic demo data", "amber", dot=True) + pill(f"Data: {backend_label()}", "blue", dot=True)
-            + pill(f"As of {AS_OF}") + pill(f"User: {st.session_state.get('user', '')}", "navy"))
+    return (pill("Synthetic demo data", "amber", dot=True) + pill(f"Data: {backend_label()}", "accent", dot=True)
+            + pill(f"As of {AS_OF}"))
 
 
 QUEUE_COLUMNS = {
     "queue_rank": st.column_config.NumberColumn("#", width="small", format="%d"),
     "customer": st.column_config.TextColumn("Customer", width="medium"),
-    "origin": st.column_config.TextColumn("Origin", width="small"),
+    "origin": st.column_config.TextColumn("Origin", width="medium"),
     "priority_score": st.column_config.ProgressColumn("Priority", min_value=0, max_value=100, format="%.0f", width="small"),
     "engine_score": st.column_config.NumberColumn("Engine", format="%.0f", width="small"),
     "legacy_score": st.column_config.TextColumn("Legacy", width="small"),
@@ -137,28 +129,92 @@ def queue_frame(df):
     if "legacy_score" in out:
         out["legacy_score"] = out["legacy_score"].map(lambda v: "–" if pd.isna(v) else f"{v:.0f}")
     out["origin"] = out["origin"].map(ui.ORIGIN_NAME).fillna(out["origin"])
+    if "customer" in out:
+        out["customer"] = out["customer"].map(ui.title_name)
     out["reasons"] = out["reasons"].fillna("").map(
-        lambda r: [RULE_LABEL.get(x.strip(), x.strip().replace("LEGACY_", "Legacy: ").replace("_", " ").title())
-                   for x in str(r).split(";") if x.strip()])
+        lambda r: [ui.humanize_code(x.strip()) for x in str(r).split(";") if x.strip()])
     return out
 
 
-# ---------------------------------------------------------------- sidebar
+# ---------------------------------------------------------------- sign in
+def sign_in_page():
+    ui.set_page("Sign in")
+    users = auth.load_users()
+    bank = (__import__("yaml").safe_load(auth.USERS_FILE.read_text()) or {}).get("bank", "")
+    _, mid, _ = st.columns([1, 1.5, 1])
+    with mid:
+        with st.container(key="login_card"):
+            st.html(f'<div class="rc-login-head">{ui.logo_svg(64)}<div class="n">Sahasranshu Risk Copilot</div>'
+                    f'<div class="s">Risk, fraud and regulatory intelligence{" for " + esc(bank) if bank else ""}</div></div>')
+            with st.form("login", border=False):
+                username = st.text_input("Username", placeholder="for example, investigator")
+                password = st.text_input("Password", type="password")
+                submitted = st.form_submit_button("Sign in", width="stretch")
+            if submitted:
+                wait = auth.locked_for(username)
+                profile = None if wait > 0 else auth.verify(username, password, users)
+                if wait > 0:
+                    st.warning(f"Too many attempts. Try again in {int(wait) + 1} seconds.")
+                elif profile:
+                    auth.clear_failures(username)
+                    st.session_state.update(auth=profile, user=profile["name"],
+                                            signed_in_at=__import__("datetime").datetime.now().strftime("%d %b %Y, %H:%M"))
+                    st.rerun()
+                elif auth.record_failure(username):
+                    st.warning(f"Too many attempts. Try again in {auth.LOCK_SECONDS} seconds.")
+                else:
+                    st.error("That username and password do not match. Please try again.")
+            with st.expander("Demo sign-ins"):
+                st.html("".join(f'<div style="display:flex;justify-content:space-between;font-size:.88rem;padding:3px 0">'
+                                f'<span><b>{esc(u["username"])}</b> · {esc(u["name"])}</span><span>{esc(u["role"])}</span></div>'
+                                for u in users.values())
+                        + '<div class="rc-login-note">Password for every demo sign-in: Demo@2026</div>')
+        st.html('<div class="rc-login-foot">Synthetic demo environment. Every person and bank shown is fictional.<br>'
+                'Production sign-in uses the bank\'s single sign-on.</div>')
+
+
+def sign_out():
+    """Forget everything about the session (the sign-in lockout is kept server-side, per username)."""
+    for k in list(st.session_state.keys()):
+        if k != "page":                       # the navigation widget's own key; reset below instead of deleted
+            del st.session_state[k]
+    st.session_state["nav_to"] = "Executive overview"     # the next user starts on the first page
+
+
+if "auth" not in st.session_state:
+    sign_in_page()
+    st.stop()
+
+ME = st.session_state["auth"]
+st.session_state["user"] = ME["name"]
+CAN_DRAFT = ME["role"] in auth.CAN_DRAFT
+CAN_APPROVE = ME["role"] in auth.CAN_APPROVE
+
+# ---------------------------------------------------------------- navigation and top bar
 PAGES = ["Executive overview", "Data integration health", "Alert queue & customer", "Ask & cases"]
 st.session_state.setdefault("page", PAGES[0])
 if "nav_to" in st.session_state:
     st.session_state["page"] = st.session_state.pop("nav_to")
 with st.sidebar:
-    st.html('<div class="rc-brand"><div class="logo"><div class="mark">RC</div><div><div class="name">Risk Copilot</div>'
-            '<div class="sub">Risk, fraud &amp; regulatory intelligence</div></div></div></div>')
+    st.html('<div class="rc-wordmark"><div class="n">Sahasranshu</div><div class="s">Risk Copilot</div></div>')
     st.radio("Screen", PAGES, key="page", label_visibility="collapsed")
     st.divider()
-    st.text_input("You are", value=os.getenv("RISK_COPILOT_USER", "jehal"), key="user",
-                  help="Recorded on every question, draft and approval. An author can never approve their own case.")
-    st.html(f'<div class="rc-side-note"><b>Kestrel Valley Bank</b> (Core A) + <b>Pellbrook Savings Bank</b> (Core B). '
-            f'Synthetic demo data; every person is fictional.<br><br>Data: {esc(executor().backend.replace(str(Path.home()), "~"))}</div>'
-            '<div class="rc-trust"><b>No AI.</b> Every answer comes from reviewed SQL, transparent rules and reviewed '
-            'templates, so the same question always gets the same answer.</div>')
+    st.html('<div class="rc-side-foot">Kestrel Valley Bank and Pellbrook Savings Bank, one bank after the merger.<br>'
+            'Synthetic demo data; every person is fictional.</div>')
+ui.set_page(st.session_state["page"])
+
+trail, prof = st.columns([5, 1.4], vertical_alignment="center")
+trail.html(f'<div class="rc-trail">Risk Copilot&nbsp;&nbsp;/&nbsp;&nbsp;<b>{esc(st.session_state["page"])}</b></div>')
+with prof.popover(f"{ME['initials']}  ·  {ME['name']}", width="stretch"):
+    st.html(f'<div class="rc-profile-card"><div class="rc-avatar">{esc(ME["initials"])}</div><div>'
+            f'<div class="n">{esc(ME["name"])}</div><div class="t">{esc(ME["title"])}</div></div></div>'
+            f'<div class="rc-profile-meta">Role: <b>{esc(ME["role"])}</b><br>Username: {esc(ME["username"])}<br>'
+            f'Signed in: {esc(st.session_state.get("signed_in_at", ""))}<br>'
+            + ("Can draft and approve cases" if CAN_APPROVE else "Can draft cases" if CAN_DRAFT else "Can view and ask")
+            + "</div>")
+    if st.button("Sign out", key="sign_out", width="stretch"):
+        sign_out()
+        st.rerun()
 
 
 # ---------------------------------------------------------------- 1. overview
@@ -218,50 +274,44 @@ def overview():
     cols = st.columns(len(KPIS))
     for col, (qid, label, field, fmt) in zip(cols, KPIS):
         _, df = catalog_answer(qid)
-        with col.container(border=True, key=f"kpi_{qid}"):
+        with col.container(border=True, key=f"kpicard_{qid}"):
             st.metric(label, fmt.format(float(df.iloc[0][field])))
             st.caption(md_safe(kpi_context(qid, df)))
             st.button("View rows", key=f"kpi_btn_{qid}", type="tertiary", on_click=_pick_kpi, args=(f"{qid} {label}",))
-    pick = st.selectbox("Show the rows behind", ["-"] + [f"{k[0]} {k[1]}" for k in KPIS], key="kpi_pick")
+    pick = st.selectbox("Show the rows behind", ["-"] + [f"{k[0]} {k[1]}" for k in KPIS], key="kpi_pick",
+                        format_func=lambda v: "Choose a number" if v == "-" else v.split(" ", 1)[1])
     if pick != "-":
         qid = pick.split()[0]
         head, df = catalog_answer(qid)
         with st.container(border=True):
-            st.html(f'<div style="font-weight:650;font-size:1.02rem">{esc(_commas(head))}</div>'
-                    f'<div style="color:{ui.MUTED};font-size:.88rem;margin-top:2px">Reviewed question {esc(qid)}: '
-                    f'{esc(by_id()[qid]["question"])}</div>')
+            ui.card_title(clean_text(_commas(head)), "Reviewed question: " + clean_text(by_id()[qid]["question"]))
             rows = q(EVIDENCE[qid])
-            st.dataframe(rows, width="stretch", hide_index=True, height=300)
+            ui.table(rows, height=300)
             with st.expander("SQL used"):
                 st.code(by_id()[qid]["sql"], language="sql")
 
     ui.section("Where the risk is", f"one queue across both cores and the risk engine · {int(h.queue_size)} items")
-    left, right = st.columns([3, 2], gap="medium")
-    with left.container(border=True):
-        st.markdown("**Top of the work queue**: select a customer to open their evidence")
+    with st.container(border=True):
+        ui.card_title("Top of the work queue", "Select a customer to open their evidence")
         top = q("SELECT queue_rank, display_name AS customer, origin, priority_score, reasons, party_id "
                 "FROM GOLD.ALERT_QUEUE WHERE queue_rank <= 10 ORDER BY queue_rank")
         ev = st.dataframe(queue_frame(top).drop(columns=["party_id"]), width="stretch", hide_index=True,
                           column_config=QUEUE_COLUMNS, on_select="rerun", selection_mode="single-row", key="ov_top",
                           height=388)
         i = selected_row(ev)
-        if i is not None and st.button(f"Open {top.iloc[i]['customer'].title()}", type="primary"):
+        if i is not None and st.button(f"Open {ui.title_name(top.iloc[i]['customer'])}", type="primary"):
             go("Alert queue & customer", party_id=top.iloc[i]["party_id"])
-    with right.container(border=True):
-        st.markdown("**How often each risk rule fires** (customers)")
+    left, right = st.columns(2, gap="medium")
+    with left.container(border=True):
+        ui.card_title("How often each risk rule fires", "Customers flagged by each rule")
         rules = q("SELECT rule_code, COUNT(*) AS customers FROM GOLD.RISK_SIGNAL GROUP BY rule_code ORDER BY customers DESC")
-        rules["rule"] = rules["rule_code"].map(RULE_LABEL).fillna(rules["rule_code"])
-        st.altair_chart(hbar(rules, "rule", "customers", "customers"), width="stretch")
+        rules["rule"] = rules["rule_code"].map(ui.humanize_code)
+        st.altair_chart(hbar(rules, "rule", "customers", "Customers"), width="stretch")
         mix = q("SELECT origin, COUNT(*) AS items FROM GOLD.ALERT_QUEUE GROUP BY origin ORDER BY items DESC")
         mix["origin"] = mix["origin"].map(ui.ORIGIN_NAME).fillna(mix["origin"])
-        mix["bar"] = "Queue"
-        st.markdown("**Where the queue comes from**")
-        st.altair_chart(style(alt.Chart(mix).mark_bar(height=26).encode(
-            x=alt.X("items:Q", stack="normalize", title=None, axis=alt.Axis(format="%", grid=False)),
-            y=alt.Y("bar:N", title=None, axis=None),
-            color=alt.Color("origin:N", title=None, scale=alt.Scale(
-                domain=list(ui.ORIGIN_NAME.values()), range=[ui.ACCENT, ui.CORE_A, ui.CORE_B])),
-            tooltip=["origin:N", "items:Q"]).properties(height=60)), width="stretch")
+    with right.container(border=True):
+        ui.card_title("Where the queue comes from", "Queue items by source")
+        st.altair_chart(hbar(mix, "origin", "items", "Queue items"), width="stretch")
 
 
 # ---------------------------------------------------------------- 2. data health
@@ -287,7 +337,7 @@ def data_health():
                   f'<span class="ok">{"&#10003;" if ok == n else "&#9888;"}</span></div>'
                   f'<div class="sub">{rows:,} rows match control totals</div>')
     else:
-        bronze = '<div class="name">Bronze · load</div><div class="big">-</div><div class="sub">reconciliation view not on this backend</div>'
+        bronze = '<div class="name">Bronze · load</div><div class="big">–</div><div class="sub">checked on the Snowflake build</div>'
     st.html('<div class="rc-pipe">'
             f'<div class="rc-stage">{bronze}</div><div class="rc-arrow">&#8594;</div>'
             f'<div class="rc-stage"><div class="name">Silver · match</div><div class="big">{int(r.auto_links):,} linked'
@@ -299,43 +349,41 @@ def data_health():
             f'<div class="rc-stage"><div class="name">Quality</div><div class="big">{int(r.dq_records):,} flagged</div>'
             f'<div class="sub">bad records listed, never dropped</div></div></div>')
 
-    ui.section("1. Load reconciliation", "Bronze row counts and amounts vs each core's extract control totals")
+    ui.section("Load reconciliation", "Bronze row counts and amounts against each core's extract control totals")
     if rec is not None:
         recd = rec.copy()
-        recd["status"] = recd["status"].map(lambda s: f"✓ {s}" if s == "MATCH" else f"✗ {s}")
+        recd["status"] = recd["status"].map(lambda s: f"✓ {ui.humanize_code(s)}" if s == "MATCH" else f"✗ {ui.humanize_code(s)}")
         recd["core"] = recd["core"].map(ui.CORE_NAME).fillna(recd["core"])
-        st.dataframe(recd, width="stretch", hide_index=True, column_config={
-            "amount_expected": st.column_config.NumberColumn("amount expected", format="dollar"),
-            "amount_loaded": st.column_config.NumberColumn("amount loaded", format="dollar"),
-            "rows_expected": st.column_config.NumberColumn("rows expected", format="localized"),
-            "rows_loaded": st.column_config.NumberColumn("rows loaded", format="localized")})
+        ui.table(recd, column_config={
+            "amount_expected": st.column_config.NumberColumn("Amount expected", format="dollar"),
+            "amount_loaded": st.column_config.NumberColumn("Amount loaded", format="dollar")})
     else:
-        st.info("Not available on this backend (CatalogException).")
+        st.info("The load check runs on the Snowflake build; this offline copy has no extract control totals.")
 
-    ui.section("2. Entity resolution across the cores", "same customer, different IDs: matched by evidence, never by guess")
+    ui.section("Entity resolution across the cores", "Same customer, different IDs: matched by evidence, never by guess")
     c1, c2, c3, c4 = st.columns(4)
     for col, label, val in ((c1, "Records linked automatically", r.auto_links), (c2, "Pairs waiting for review", r.review_queue),
                             (c3, "Resolved customers", r.resolved_customers), (c4, "Customers in both cores", r.in_both_cores)):
-        with col.container(border=True):
+        with col.container(border=True, key=f"kpi_er_{label[:12].replace(' ', '_')}"):
             st.metric(label, f"{int(val):,}")
     st.caption("Measured against ground truth: 0 false merges; 98.70% of true duplicates linked automatically, "
                "100% after the review queue.")
     with st.expander("Match review queue: uncertain pairs, never merged automatically"):
-        st.dataframe(q("SELECT a_name, b_name, a_id, b_id, review_reason, reason_codes FROM SILVER.MATCH_REVIEW_QUEUE "
-                       "ORDER BY review_reason, a_name"), width="stretch", hide_index=True)
+        ui.table(q("SELECT a_name, b_name, a_id, b_id, review_reason, reason_codes FROM SILVER.MATCH_REVIEW_QUEUE "
+                   "ORDER BY review_reason, a_name"))
 
-    ui.section("3. Data-quality exceptions", "every record that breaks a rule, with its source file and row")
+    ui.section("Data-quality exceptions", "Every record that breaks a rule, with its source file and row")
     dq = q("SELECT rule_id, COUNT(*) AS records FROM SILVER.DQ_EXCEPTIONS GROUP BY rule_id ORDER BY records DESC")
     left, right = st.columns([2, 3], gap="medium")
     with left.container(border=True):
         dqc = dq.copy()
-        dqc["rule"] = dqc["rule_id"].str.replace("DQ_", "").str.replace("_", " ").str.capitalize()
-        st.altair_chart(hbar(dqc, "rule", "records", "records", color=ui.AMBER), width="stretch")
+        dqc["rule"] = dqc["rule_id"].map(ui.humanize_code)
+        ui.card_title("Records flagged by each check")
+        st.altair_chart(hbar(dqc, "rule", "records", "Records"), width="stretch")
     with right:
-        rule = st.selectbox("Show the records for", dq["rule_id"].tolist(), key="dq_rule")
-        st.dataframe(q(f"SELECT source_system, entity, record_key, field, observed_value, source_file, source_row "
-                       f"FROM SILVER.DQ_EXCEPTIONS WHERE rule_id = '{rule}' ORDER BY source_system, source_row"),
-                     width="stretch", hide_index=True, height=260)
+        rule = st.selectbox("Show the records for", dq["rule_id"].tolist(), key="dq_rule", format_func=ui.humanize_code)
+        ui.table(q(f"SELECT source_system, entity, record_key, field, observed_value, source_file, source_row "
+                   f"FROM SILVER.DQ_EXCEPTIONS WHERE rule_id = '{rule}' ORDER BY source_system, source_row"), height=260)
 
 
 # ---------------------------------------------------------------- 3. queue & customer
@@ -355,15 +403,16 @@ def cash_story(cash, t):
     missed = totals[(totals.cores >= 2) & (totals.total > ctr) & (~totals.ctr)]
     x = alt.X("day:T", title=None, axis=alt.Axis(format="%d %b", labelAngle=0, grid=False))
     bars = alt.Chart(daily).mark_bar(width=14, cornerRadiusEnd=2).encode(
-        x=x, y=alt.Y("sum(amount_usd):Q", title="cash deposited that day ($)", axis=alt.Axis(format="$,.0f")),
+        x=x, y=alt.Y("sum(amount_usd):Q", title="Cash deposited that day", axis=alt.Axis(format="$,.0f")),
         color=alt.Color("core:N", title=None, scale=alt.Scale(domain=domain, range=rng)),
-        tooltip=[alt.Tooltip("day:T", format="%d %b %Y"), "core:N", alt.Tooltip("amount_usd:Q", format="$,.2f")])
+        tooltip=[alt.Tooltip("day:T", format="%d %b %Y", title="Day"), alt.Tooltip("core:N", title="Core"),
+                 alt.Tooltip("amount_usd:Q", format="$,.0f", title="Cash")])
     rule_ctr = alt.Chart(pd.DataFrame({"y": [ctr]})).mark_rule(color=ui.RED, strokeDash=[5, 4], size=1.5).encode(y="y:Q")
     lab_ctr = alt.Chart(pd.DataFrame({"y": [ctr], "t": [f"CTR threshold {money(ctr)} per person per day"]})).mark_text(
-        align="right", dy=-7, x="width", color=ui.RED, fontSize=11, fontWeight=600).encode(y="y:Q", text="t:N")
+        align="right", dy=-7, x="width", color=ui.RED, fontSize=12, fontWeight=600).encode(y="y:Q", text="t:N")
     layers = [bars, rule_ctr, lab_ctr]
     if len(missed):
-        layers.append(alt.Chart(missed).mark_text(dy=-10, color=ui.RED, fontWeight=700, fontSize=11).encode(
+        layers.append(alt.Chart(missed).mark_text(dy=-10, color=ui.RED, fontWeight=700, fontSize=12).encode(
             x="day:T", y="total:Q", text=alt.value("No CTR filed")))
     daily_chart = alt.layer(*layers).properties(height=280)
 
@@ -379,15 +428,16 @@ def cash_story(cash, t):
     allg["line"] = "Both cores"
     run = pd.concat(run + [allg[["day", "running", "line"]]])
     lines = alt.Chart(run).mark_line(interpolate="step-after", strokeWidth=3, point=alt.OverlayMarkDef(size=36)).encode(
-        x=x, y=alt.Y("running:Q", title="running total of cash ($)", axis=alt.Axis(format="$,.0f"),
+        x=x, y=alt.Y("running:Q", title="Running total of cash", axis=alt.Axis(format="$,.0f"),
                      scale=alt.Scale(domain=[0, max(float(run.running.max()), xcore) * 1.12])),
         color=alt.Color("line:N", title=None, scale=alt.Scale(domain=domain + ["Both cores"], range=rng + [ui.BOTH])),
-        tooltip=[alt.Tooltip("day:T", format="%d %b %Y"), "line:N", alt.Tooltip("running:Q", format="$,.2f")])
+        tooltip=[alt.Tooltip("day:T", format="%d %b %Y", title="Day"), alt.Tooltip("line:N", title="Line"),
+                 alt.Tooltip("running:Q", format="$,.0f", title="Running total")])
     refs = pd.DataFrame({"y": [per_core, xcore], "t": [f"Each core's legacy alert rule {money(per_core)} in 30 days",
                                                          f"Cross-core rule {money(xcore)} in 30 days"],
                          "c": [ui.GREY, ui.RED]})
     ref_rules = alt.Chart(refs).mark_rule(strokeDash=[5, 4], size=1.5).encode(y="y:Q", color=alt.Color("c:N", scale=None))
-    ref_text = alt.Chart(refs).mark_text(align="right", dy=-7, x="width", fontSize=11, fontWeight=600).encode(
+    ref_text = alt.Chart(refs).mark_text(align="right", dy=-7, x="width", fontSize=12, fontWeight=600).encode(
         y="y:Q", text="t:N", color=alt.Color("c:N", scale=None))
     run_chart = alt.layer(lines, ref_rules, ref_text).properties(height=280)
     return daily_chart, run_chart, d
@@ -402,19 +452,19 @@ def queue_and_customer():
                                  default=["RISK_ENGINE", "LEGACY_CORE_A", "LEGACY_CORE_B"],
                                  format_func=lambda o: ui.ORIGIN_NAME.get(o, o))
         min_score = f2.slider("Minimum priority", 0, 100, 0, step=5)
-        name = f3.text_input("Find a customer by name", placeholder="e.g. Deborah Sanford")
+        name = f3.text_input("Find a customer by name", placeholder="for example, Deborah Sanford")
     if name:
         found = find_customers(name, executor())
         if found:
             st.session_state["party_id"] = found[0].party_id
         else:
-            st.warning(f"No customer named {name!r}.")
+            st.warning(f"No customer named {md_safe(name)}.")
     if origins:
         in_list = ", ".join(f"'{o}'" for o in origins)
         queue = q(f"SELECT queue_rank, display_name AS customer, origin, priority_score, engine_score, legacy_score, "
                   f"reasons, party_id FROM GOLD.ALERT_QUEUE WHERE origin IN ({in_list}) AND priority_score >= {int(min_score)} "
                   f"ORDER BY queue_rank LIMIT 200")
-        st.caption(f"{len(queue)} items shown (first 200). Select one to open the customer.")
+        st.caption(f"Showing {len(queue)} items, highest priority first. Select one to open the customer.")
         ev = st.dataframe(queue_frame(queue).drop(columns=["party_id"]), width="stretch", hide_index=True, height=300,
                           column_config=QUEUE_COLUMNS, on_select="rerun", selection_mode="single-row", key="queue_tbl")
         i = selected_row(ev)
@@ -433,12 +483,12 @@ def queue_and_customer():
     ranked = len(risk) and pd.notna(risk.queue_rank[0])
     rank = f"{int(risk.queue_rank[0])} of {int(risk.queue_size[0])}" if ranked else "not queued"
 
-    ui.section("Customer", "one real customer, resolved across both cores")
+    ui.section("Customer", "One real customer, resolved across both cores")
     with st.container(border=True):
         ring, body = st.columns([1, 7], vertical_alignment="center")
         ring.html(ui.score_ring(score, 104))
         with body:
-            st.subheader(f"{prof.display_name.title()}")
+            st.subheader(ui.title_name(prof.display_name))
             ids = []
             if prof.core_a_key:
                 ids.append(pill(f"Core A {prof.core_a_key}", "core-a"))
@@ -447,20 +497,19 @@ def queue_and_customer():
             kind = "Business" if prof.party_kind == "ORG" else "Person"
             cash_total = float(cash30["cash_usd"].astype(float).sum()) if len(cash30) else 0.0
             st.html(f'<div class="rc-meta" style="justify-content:flex-start">{"".join(ids)}{pill(kind)}'
-                    f'{pill(f"{int(prof.cores)} core(s)", "blue")}</div>'
+                    f'{pill("In both cores" if int(prof.cores) == 2 else "In one core", "accent")}</div>'
                     f'<div class="rc-kv"><div><span>Queue rank</span><b>{esc(rank)}</b></div>'
                     f'<div><span>Risk score</span><b>{score:.0f}</b></div>'
                     f'<div><span>Legacy alerts</span><b>{len(v["alerts"])}</b></div>'
                     f'<div><span>Cash in, 30 days</span><b>{money(cash_total)}</b></div>'
                     f'<div><span>City</span><b>{esc(str(prof.city or "").title())}, {esc(prof.state or "")}</b></div></div>')
-        links = [ui.LINK_LABEL.get(x, x.replace("_", " ").title()) for x in str(prof.link_reasons or "").split(";") if x]
-        st.html('<div style="margin-top:10px;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;'
-                f'color:{ui.MUTED};font-weight:700;margin-bottom:6px">Linked across cores by</div>'
+        links = [ui.humanize_code(x) for x in str(prof.link_reasons or "").split(";") if x]
+        st.html('<div class="rc-label">Linked across cores by</div>'
                 + (ui.chips(links) if links else ui.chips(["Single record in one core"])))
 
     if len(v["signals"]):
         sig = numeric(v["signals"])
-        ui.section("Why this customer is ranked here", f"score {score:.0f} = the sum of the rule weights (kept within 0-100)")
+        ui.section("Why this customer is ranked here", f"Score {score:.0f} is the sum of the rule weights, capped at 100")
         st.html(ui.rule_cards([{"rule_code": s.rule_code, "weight": s.weight, "evidence": _commas(s.evidence_text)}
                                for s in sig.itertuples()]))
 
@@ -473,7 +522,7 @@ def queue_and_customer():
         a_usd, b_usd = float(per.get("core_a", 0)), float(per.get("core_b", 0))
         title = (f"Each bank saw under {money(thresholds().get('thresholds.legacy_per_core_cash_30d_usd', 30000))}. "
                  f"Together: {money(a_usd + b_usd)}." if a_usd and b_usd else f"Cash deposits: {money(a_usd + b_usd)} in 30 days")
-        ui.section("Cash across both cores, last 30 days", "what each legacy system saw vs what the bank really holds")
+        ui.section("Cash across both cores, last 30 days", "What each legacy system saw against what the bank really holds")
         with st.container(border=True):
             st.html(f'<div style="font-size:1.15rem;font-weight:650;color:{ui.INK}">{esc(title)}</div>'
                     f'<div style="color:{ui.MUTED};font-size:.88rem;margin:2px 0 4px 0">Core A {money(a_usd)} + Core B '
@@ -483,26 +532,30 @@ def queue_and_customer():
             c2.altair_chart(style(run_chart), width="stretch")
 
     t1, t2, t3, t4 = st.tabs(["Accounts and cash", "KYC", "Alerts and notes", "Loans"])
-    money_cols = {c: st.column_config.NumberColumn(c.replace("_", " "), format="dollar")
-                  for c in ("balance_usd", "amount_usd", "expected_monthly_cash_usd", "principal_usd")}
     with t1:
-        st.dataframe(numeric(v["accounts"]), width="stretch", hide_index=True, column_config=money_cols)
-        st.markdown(f"**Cash deposits, last 30 days** ({len(cash)})")
-        st.dataframe(cash, width="stretch", hide_index=True, column_config=money_cols)
+        ui.table(numeric(v["accounts"]))
+        ui.card_title(f"Cash deposits in the last 30 days: {len(cash)}")
+        ui.table(cash)
     with t2:
-        st.dataframe(numeric(v["kyc"]), width="stretch", hide_index=True, column_config=money_cols)
+        ui.table(numeric(v["kyc"]))
     with t3:
-        st.dataframe(v["alerts"], width="stretch", hide_index=True)
+        ui.table(v["alerts"])
         if v.get("notes") is not None and len(v["notes"]):
-            st.dataframe(v["notes"][["citation", "snippet"]], width="stretch", hide_index=True)
+            ui.table(v["notes"][["citation", "snippet"]])
         else:
             st.caption("No investigator notes for this customer.")
     with t4:
-        st.dataframe(numeric(v["loans"]), width="stretch", hide_index=True, column_config=money_cols)
-    if st.button("Draft a case narrative for this customer", type="primary"):
-        oid, _ = C.draft_narrative(pid, st.session_state["user"], executor())
-        go("Ask & cases", case_id=oid, flash=f"Draft {oid[:8]} saved. Someone other than "
-                                               f"{st.session_state['user']} must approve it.")
+        ui.table(numeric(v["loans"]))
+    if st.button("Draft a case narrative for this customer", type="primary", disabled=not CAN_DRAFT,
+                 help=None if CAN_DRAFT else "Investigators and approvers can draft cases"):
+        try:
+            oid, _ = C.draft_narrative(pid, st.session_state["user"], executor(), role=ME["role"])
+        except C.ApprovalError as e:
+            st.error(clean_text(str(e)).capitalize())
+        else:
+            go("Ask & cases", case_id=oid, flash=f"Draft saved. Someone other than {st.session_state['user']} must approve it.")
+    if not CAN_DRAFT:
+        st.caption("Your role can view and ask. Investigators and approvers can draft cases.")
 
 
 # ---------------------------------------------------------------- 4. ask & cases
@@ -511,44 +564,61 @@ EXAMPLES = ["Which customers moved more than $50k in cash across both cores in 3
             "Which alerts should my team work first today, and why?",
             "What does our BSA policy say about aggregating cash transactions across the two cores?",
             "Draft a case narrative for the highest-risk customer in the queue."]
-EXAMPLE_LABELS = ["D01 · Cross-core cash", "D02 · Missed CTRs", "D03 · Work first",
-                  "D04 · Policy", "D05 · Draft top case"]
-ROUTE_KIND = {"CATALOG": "blue", "SEARCH": "core-b", "CUSTOMER": "core-a", "NARRATIVE": "amber", "CLARIFY": ""}
+EXAMPLE_LABELS = ["Cross-core cash", "Missed CTRs", "Work first", "Policy", "Draft top case"]
+ROUTE_KIND = {"CATALOG": "accent", "SEARCH": "accent", "CUSTOMER": "accent", "NARRATIVE": "accent", "CLARIFY": "amber"}
+
+
+def rule_words(rule):
+    """data_words+catalog_match_confident -> data words, confident catalogue match."""
+    parts = [p.replace("_", " ") for p in str(rule or "").split("+") if p]
+    return ", ".join(parts).replace("catalog", "catalogue")
 
 
 def ask_tab_body():
     with st.container(border=True):
-        st.html(f'<div style="font-weight:650;font-size:1.05rem">Ask in plain English</div><div style="color:{ui.MUTED};'
-                'font-size:.88rem;margin:2px 0 8px 0">Readable rules route each question to a reviewed SQL question, '
-                'document search, the customer view or a case narrative. If no rule is sure, it says so.</div>')
+        ui.card_title("Ask in plain English", "Readable rules route each question to a reviewed SQL question, document "
+                      "search, the customer view or a case narrative. If no rule is sure, it says so.")
         ex_cols = st.columns(len(EXAMPLES))
         for col, ex, label in zip(ex_cols, EXAMPLES, EXAMPLE_LABELS):
             if col.button(label, help=ex, width="stretch"):
                 st.session_state["question"] = ex
-        text = st.text_input("Question", key="question", placeholder="e.g. How many alerts did we get last month?")
+        text = st.text_input("Question", key="question", placeholder="for example, How many alerts did we get last month?")
     if not text:
         return
     a = answer(text, executor())
-    log_question(a, executor(), app_user=st.session_state["user"])
+    if st.session_state.get("last_logged") != (ME["username"], text):     # one audit row per question, not per rerun
+        log_question(a, executor(), app_user=st.session_state["user"])
+        st.session_state["last_logged"] = (ME["username"], text)
     with st.container(border=True):
+        answered_as = clean_text(re.sub(r"\s*\([^)]*\.py\)", "", str(a.answered_as or "")))[:90]
         st.html(f'<div class="rc-meta" style="justify-content:flex-start;margin-bottom:10px">'
-                f'{pill("Route: " + a.route, ROUTE_KIND.get(a.route, ""), dot=True)}{pill("Rule: " + str(a.rule))}'
-                + (pill("Answered as " + str(a.answered_as)[:90]) if a.answered_as else "") + "</div>"
-                f'<div style="font-size:1.12rem;font-weight:650;line-height:1.45;color:{ui.INK};border-left:4px solid '
-                f'{ui.ACCENT};padding:6px 0 6px 14px;background:#f5f8ff;border-radius:0 8px 8px 0">{esc(_commas(a.headline))}</div>')
+                f'{pill("Answered by: " + ui.ROUTE_NAME.get(a.route, ui.humanize_code(a.route)), ROUTE_KIND.get(a.route, ""), dot=True)}'
+                f'{pill("Rule: " + rule_words(a.rule))}'
+                + (pill("Answered as " + answered_as) if answered_as else "") + "</div>"
+                f'<div class="rc-answer">{esc(clean_text(_commas(a.headline)))}</div>')
         if a.suggestions:
             cat = by_id()
-            st.markdown("**Did you mean one of these reviewed questions?**")
+            ui.card_title("Did you mean one of these reviewed questions?")
             for qid, _ in a.suggestions:
                 st.markdown(f"- {md_safe(cat[qid]['question'])}")
         if a.text:
-            st.markdown(md_safe(a.text))
+            text_shown = re.sub(r"\s*To save it for approval:.*?(?=\n|$)", "", str(a.text))
+            st.markdown(md_safe(text_shown))
+            if a.route == "NARRATIVE" and CAN_DRAFT and getattr(a, "party_id", None):
+                if st.button("Save this draft for approval", type="primary", key="save_preview"):
+                    try:
+                        oid, _ = C.draft_narrative(a.party_id, st.session_state["user"], executor(), role=ME["role"])
+                    except C.ApprovalError as e:
+                        st.error(clean_text(str(e)).capitalize())
+                        return
+                    go("Ask & cases", case_id=oid, flash=f"Draft saved. Someone other than {st.session_state['user']} "
+                                                         f"must approve it.")
         else:
             for title, df in a.tables:
-                st.markdown(f"**{title}**")
-                st.dataframe(numeric(df), width="stretch", hide_index=True)
+                ui.card_title(clean_text(title))
+                ui.table(numeric(df))
         if a.citations:
-            with st.expander(f"Sources ({len(a.citations)})"):
+            with st.expander(f"Sources: {len(a.citations)}"):
                 for c in a.citations:
                     st.markdown(f"- {md_safe(c)}")
 
@@ -561,7 +631,8 @@ def case_tab_body():
     ids = outs["output_id"].tolist()
     default = ids.index(st.session_state["case_id"]) if st.session_state.get("case_id") in ids else 0
     pick = st.selectbox("Case", ids, index=default,
-                        format_func=lambda i: (lambda r: f"{r.subject.title()} · {r.status} · by {r.author} · {str(r.created_at)[:16]}")(
+                        format_func=lambda i: (lambda r: f"{ui.title_name(r.subject)} · {ui.humanize_code(r.status)} · "
+                                                         f"by {r.author} · {clean_text(str(r.created_at)[:16])}")(
                             outs[outs.output_id == i].iloc[0]))
     md, status = C.final_text(pick, executor())
     out = C.get_output(pick, executor())
@@ -569,15 +640,19 @@ def case_tab_body():
     with st.container(border=True):
         head = st.empty()                 # filled after the buttons, so a Verify click shows at once
         b1, b2, b3, b4, b5 = st.columns([2, 2, 2, 2, 3], vertical_alignment="bottom")
-        comment = b5.text_input("Comment", key="case_comment", placeholder="optional, saved with the decision")
+        comment = b5.text_input("Comment", key="case_comment", placeholder="Optional, saved with the decision")
         for col, label, decision in ((b1, "Approve", "APPROVED"), (b2, "Reject", "REJECTED")):
-            if col.button(label, disabled=status != "DRAFT", width="stretch",
-                          type="primary" if label == "Approve" else "secondary"):
+            if col.button(label, disabled=status != "DRAFT" or not CAN_APPROVE, width="stretch",
+                          type="primary" if label == "Approve" else "secondary",
+                          help=None if CAN_APPROVE else "Only approvers can approve or reject"):
                 try:
-                    C.decide(pick, st.session_state["user"], decision, executor(), comment)
+                    C.decide(pick, st.session_state["user"], decision, executor(), comment, role=ME["role"])
                     go("Ask & cases", case_id=pick, flash=f"{decision.title()} by {st.session_state['user']}.")
                 except C.ApprovalError as e:
-                    st.error(str(e))
+                    msg = str(e)
+                    if "cannot approve" in msg:
+                        msg = f"{st.session_state['user']} wrote this case and cannot approve it. A second person must."
+                    st.error(clean_text(msg))
         if b3.button("Verify", width="stretch"):
             ok, info = C.reproduce(pick, executor())
             st.session_state[f"verified_{pick}"] = ok
@@ -589,7 +664,7 @@ def case_tab_body():
         buf = io.BytesIO()
         export_pdf(md, buf, status=status, footer=f"Output {pick} | status {status} | text SHA-256 "
                                                    f"{out['content_sha256'][:16]}... | synthetic data")
-        b4.download_button("Download PDF", buf.getvalue(), file_name=f"{out['subject'].replace(' ', '_').lower()}_{pick[:8]}.pdf",
+        b4.download_button("Download PDF", buf.getvalue(), file_name=f"{out['subject'].replace(' ', '-').lower()}-{pick[:8]}.pdf",
                            mime="application/pdf", width="stretch")
         verified = st.session_state.get(f"verified_{pick}")
         steps = [("Drafted", "done"),
@@ -598,11 +673,10 @@ def case_tab_body():
         head.html(ui.stepper(steps)
                 + f'<div class="rc-kv"><div><span>Status</span><b>{ui.status_pill(status)}</b></div>'
                 f'<div><span>Author</span><b>{esc(out["author"])}</b></div>'
-                f'<div><span>Approver</span><b>{esc(row.get("approver") if pd.notna(row.get("approver")) else "-")}</b></div>'
-                f'<div><span>Output</span><b style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.95rem">'
-                f'{esc(pick[:8])}</b></div>'
-                f'<div><span>Text fingerprint (SHA-256)</span><b style="font-family:ui-monospace,Menlo,Consolas,monospace;'
-                f'font-size:.95rem">{esc(out["content_sha256"][:16])}…</b></div></div>')
+                f'<div><span>Approver</span><b>{esc(row.get("approver") if pd.notna(row.get("approver")) else "–")}</b></div>'
+                f'<div><span>Case reference</span><b class="rc-mono" style="font-size:.95rem">{esc(pick[:8])}</b></div>'
+                f'<div><span>Text fingerprint, SHA-256</span><b class="rc-mono" style="font-size:.95rem">'
+                f'{esc(out["content_sha256"][:16])}…</b></div></div>')
     with st.container(border=True, key="narrative"):
         st.markdown(md_safe(md))
 
@@ -622,10 +696,11 @@ def ask_and_cases():
         log = q_safe("SELECT logged_at, app_user, route, rule, question, headline FROM AUDIT.QUESTION_LOG "
                      "ORDER BY logged_at DESC LIMIT 50", cached=False)
         if log is not None:
-            st.dataframe(log, width="stretch", hide_index=True, column_config={
-                "logged_at": st.column_config.DatetimeColumn("logged at", format="D MMM YYYY, HH:mm:ss"),
-                "question": st.column_config.TextColumn("question", width="large"),
-                "headline": st.column_config.TextColumn("headline", width="large")})
+            log = log.copy()
+            log["route"] = log["route"].map(lambda r: ui.ROUTE_NAME.get(r, ui.humanize_code(r)))
+            log["rule"] = log["rule"].map(rule_words)
+            ui.table(log, column_config={"question": st.column_config.TextColumn("Question", width="large"),
+                                         "headline": st.column_config.TextColumn("Answer", width="large")})
         st.caption("Every question is logged with its route, rule and sources; every case keeps its evidence snapshot.")
 
 

@@ -1,0 +1,20 @@
+# Demo sign-ins for the Risk Copilot app. FICTIONAL people; synthetic demo environment only.
+# Every demo password is Demo@2026. Passwords are stored only as salted PBKDF2-SHA256 hashes.
+# Change one with:  python app/auth.py hash "new password"  and paste the result below.
+bank: Kestrel Valley Bank
+users:
+  - username: analyst
+    name: Maya Collins
+    role: Analyst
+    title: BSA analyst
+    password_hash: "pbkdf2_sha256$200000$39237ff2142c77704248a6d0dad5cd53$cbed5e9ebef77d27de38c2038e38749e6047a3cb3a34097b7ae2111de37b5588"
+  - username: investigator
+    name: Daniel Ortiz
+    role: Investigator
+    title: Financial crimes investigator
+    password_hash: "pbkdf2_sha256$200000$da61d9006abb116fdf90f180a1b53f3e$f19e5abe28534b2c86193511daef60d69efd25ed018cffd7457cdc6ee2ccc1bf"
+  - username: approver
+    name: Sarah Whitfield
+    role: Approver
+    title: BSA officer
+    password_hash: "pbkdf2_sha256$200000$2b93185c06a9cfe0b73a2bb220009244$1f274c9bca3fa0704b74fa170d045024ecc41d9ca8599c563561bd25c436b92c"

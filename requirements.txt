@@ -5,5 +5,5 @@ reportlab>=4.0
 pypdf>=4.0
 duckdb>=1.1
 pytest>=8.0
-streamlit>=1.45
+streamlit>=1.51
 snowflake-connector-python>=3.10

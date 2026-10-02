@@ -36,8 +36,15 @@ def _check_id(output_id):
     return str(output_id)
 
 
-def draft_narrative(party_id, author, execute):
-    """Build and store a DRAFT case narrative. Returns (output_id, markdown)."""
+DRAFT_ROLES = {"Investigator", "Approver"}
+APPROVE_ROLES = {"Approver"}
+
+
+def draft_narrative(party_id, author, execute, role=None):
+    """Build and store a DRAFT case narrative. Returns (output_id, markdown). When a role is given (the app always
+    gives one), only investigators and approvers may draft."""
+    if role is not None and role not in DRAFT_ROLES:
+        raise ApprovalError(f"the {role} role cannot draft case narratives")
     if not author:
         raise ApprovalError("an author is required")
     ev = gather_evidence(party_id, execute)
@@ -64,8 +71,11 @@ def status(output_id, execute):
     return df.iloc[0].to_dict() if len(df) else None
 
 
-def decide(output_id, approver, decision, execute, comment=""):
-    """Record APPROVED or REJECTED. Enforces the config rules before writing anything."""
+def decide(output_id, approver, decision, execute, comment="", role=None):
+    """Record APPROVED or REJECTED. Enforces the config rules before writing anything. When a role is given (the app
+    always gives one), only approvers may decide."""
+    if role is not None and role not in APPROVE_ROLES:
+        raise ApprovalError(f"the {role} role cannot approve or reject case narratives")
     decision = decision.upper()
     if decision not in ("APPROVED", "REJECTED"):
         raise ApprovalError("decision must be APPROVED or REJECTED")

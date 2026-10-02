@@ -1,15 +1,39 @@
 [theme]
 base = "light"
-primaryColor = "#2453c6"
-backgroundColor = "#f6f8fb"
+primaryColor = "#1d4ed8"
+backgroundColor = "#f4f6fa"
 secondaryBackgroundColor = "#eef2f8"
 textColor = "#14213d"
-font = "sans serif"
+font = "Inter, sans-serif"
+codeFont = "monospace"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/Inter-400.woff2"
+weight = 400
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/Inter-500.woff2"
+weight = 500
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/Inter-600.woff2"
+weight = 600
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/fonts/Inter-700.woff2"
+weight = 700
 
 [theme.sidebar]
 backgroundColor = "#0f1b33"
 textColor = "#e6ecf7"
 secondaryBackgroundColor = "#18284a"
+
+[server]
+enableStaticServing = true
 
 [client]
 toolbarMode = "minimal"
