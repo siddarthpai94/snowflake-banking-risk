@@ -36,7 +36,7 @@ from semantic.catalog import by_id, headline, run_question  # noqa: E402
 
 RULE_LABEL = ui.RULE_LABEL
 AS_OF = "31 Aug 2026"
-st.set_page_config(page_title="Sahasranshu Risk Copilot", layout="wide")
+st.set_page_config(page_title="Risk Copilot", layout="wide")
 
 
 def md_safe(text):
@@ -144,7 +144,7 @@ def sign_in_page():
     _, mid, _ = st.columns([1, 1.5, 1])
     with mid:
         with st.container(key="login_card"):
-            st.html(f'<div class="rc-login-head">{ui.logo_svg(64)}<div class="n">Sahasranshu Risk Copilot</div>'
+            st.html(f'<div class="rc-login-head">{ui.logo_svg(64)}<div class="n">Risk Copilot</div>'
                     f'<div class="s">Risk, fraud and regulatory intelligence{" for " + esc(bank) if bank else ""}</div></div>')
             with st.form("login", border=False):
                 username = st.text_input("Username", placeholder="for example, investigator")
@@ -196,7 +196,7 @@ st.session_state.setdefault("page", PAGES[0])
 if "nav_to" in st.session_state:
     st.session_state["page"] = st.session_state.pop("nav_to")
 with st.sidebar:
-    st.html('<div class="rc-wordmark"><div class="n">Sahasranshu</div><div class="s">Risk Copilot</div></div>')
+    st.html('<div class="rc-wordmark"><div class="n">Risk Copilot</div></div>')
     st.radio("Screen", PAGES, key="page", label_visibility="collapsed")
     st.divider()
     st.html('<div class="rc-side-foot">Kestrel Valley Bank and Pellbrook Savings Bank, one bank after the merger.<br>'
@@ -263,13 +263,11 @@ def overview():
                     (SELECT COUNT(DISTINCT party_id) FROM GOLD.RISK_SIGNAL WHERE rule_code = 'CTR_AGGREGATION_MISSED') AS ctr_missed,
                     (SELECT COUNT(*) FROM GOLD.ALERT_QUEUE) AS queue_size""").iloc[0]
     st.html(f'<div class="rc-hero"><div class="lead"><div class="eyebrow">What the merger hid</div>'
-            f'<h2>{int(h.xcore)} customers moved over $50,000 in cash across the two banks in 30 days. '
-            f'{"None" if int(h.xcore_no_alert) == int(h.xcore) else int(h.xcore) - int(h.xcore_no_alert)} of them had '
-            f'a legacy alert in either core.</h2><p>Each core saw only its own half of the cash, so every deposit and every '
-            f'monthly total stayed under its own threshold. Joined in Snowflake, the pattern is plain.</p></div>'
-            f'<div class="stats"><div class="stat"><b>{int(h.xcore_no_alert)}</b><span>missed by both legacy systems</span></div>'
-            f'<div class="stat"><b>{int(h.ctr_missed)}</b><span>with a missed CTR across cores</span></div>'
-            f'<div class="stat"><b>{int(h.queue_size)}</b><span>items in one ranked queue</span></div></div></div>')
+            f'<h2>{int(h.xcore)} customers moved over $50,000 in cash across both banks in 30 days.</h2>'
+            f'<p>{"No legacy alert caught them." if int(h.xcore_no_alert) == int(h.xcore) else str(int(h.xcore_no_alert)) + " had no legacy alert."}</p></div>'
+            f'<div class="stats"><div class="stat"><b>{int(h.xcore_no_alert)}</b><span>no alert</span></div>'
+            f'<div class="stat"><b>{int(h.ctr_missed)}</b><span>missed CTRs</span></div>'
+            f'<div class="stat"><b>{int(h.queue_size)}</b><span>in one queue</span></div></div></div>')
 
     cols = st.columns(len(KPIS))
     for col, (qid, label, field, fmt) in zip(cols, KPIS):

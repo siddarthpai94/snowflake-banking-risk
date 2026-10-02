@@ -452,7 +452,7 @@ def logo_svg(size=56):
             f'{rays}<circle cx="32" cy="36" r="7.5" fill="#f5b942"/>'
             f'<rect x="16" y="36" width="32" height="2.6" rx="1.3" fill="#ffffff"/></svg>')
     # an <img> data URI: st.html strips inline <svg> elements
-    return (f'<img alt="Sahasranshu logo" width="{size}" height="{size}" '
+    return (f'<img alt="Risk Copilot logo" width="{size}" height="{size}" '
             f'src="data:image/svg+xml;base64,{base64.b64encode(svg.encode()).decode()}"/>')
 
 
