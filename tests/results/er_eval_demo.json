@@ -55,8 +55,8 @@
   "false_merge_examples": [],
   "missed_examples": [],
   "seconds": {
-    "load_bronze": 10.2,
-    "silver": 0.6,
-    "gold_and_risk": 11.9
+    "load_bronze": 10.3,
+    "silver": 1.3,
+    "gold_and_risk": 15.4
   }
 }

@@ -1,6 +1,7 @@
 """Run the Snowflake Silver and Gold SQL locally on DuckDB and score it against ground truth.
 
   python scripts/local_duckdb.py --data data/out/demo
+  python scripts/local_duckdb.py --data data/out/demo --db data/out/app.duckdb   # also builds what the app needs
 
 This is a pre-flight check, not a substitute for running in Snowflake: the same
 SQL files are translated with a handful of dialect shims (see translate() and
@@ -355,6 +356,11 @@ def main():
     (out.parent / f"risk_eval_{data.name}.json").write_text(json.dumps(risk, indent=2, default=str) + "\n")
     print(json.dumps({k: v for k, v in res.items() if not k.endswith("examples")}, indent=2, default=int))
     print(json.dumps({k: v for k, v in risk.items() if k != "golden"}, indent=2, default=str))
+    if a.db != ":memory:":                       # a file the app will open: build every layer the app reads
+        for step in (run_semantic, run_search, run_agent, run_outputs):
+            step(con)
+        con.close()
+        print(f"\nApp database ready: {a.db}\nStart the app with RISK_COPILOT_BACKEND=duckdb:{a.db}")
 
 
 if __name__ == "__main__":
