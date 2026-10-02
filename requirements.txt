@@ -6,4 +6,5 @@ pypdf>=4.0
 duckdb>=1.1
 pytest>=8.0
 streamlit>=1.51
+plotly>=5.22
 snowflake-connector-python>=3.10

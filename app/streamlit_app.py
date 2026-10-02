@@ -16,7 +16,6 @@ import re
 import sys
 from pathlib import Path
 
-import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -24,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from db import get_executor, numeric  # noqa: E402
 import auth  # noqa: E402
+import charts  # noqa: E402
 import ui  # noqa: E402
 from ui import clean_text, esc, pill  # noqa: E402
 
@@ -47,14 +47,6 @@ def md_safe(text):
 
 def money(x):
     return f"${float(x):,.0f}"
-
-
-def style(chart):
-    return ui.chart_style(chart)
-
-
-def hbar(df, label, value, title, color=None):
-    return ui.hbar(df, label, value, title, color=color)
 
 
 # ---------------------------------------------------------------- data access
@@ -317,12 +309,12 @@ def overview():
         ui.card_title("How often each risk rule fires", "Customers flagged by each rule")
         rules = q("SELECT rule_code, COUNT(*) AS customers FROM GOLD.RISK_SIGNAL GROUP BY rule_code ORDER BY customers DESC")
         rules["rule"] = rules["rule_code"].map(ui.humanize_code)
-        st.altair_chart(hbar(rules, "rule", "customers", "Customers"), width="stretch")
+        st.plotly_chart(charts.hbar(rules, "rule", "customers", "Customers"), width="stretch", config=charts.CONFIG)
         mix = q("SELECT origin, COUNT(*) AS items FROM GOLD.ALERT_QUEUE GROUP BY origin ORDER BY items DESC")
         mix["origin"] = mix["origin"].map(ui.ORIGIN_NAME).fillna(mix["origin"])
     with card(right):
         ui.card_title("Where the queue comes from", "Queue items by source")
-        st.altair_chart(hbar(mix, "origin", "items", "Queue items"), width="stretch")
+        st.plotly_chart(charts.hbar(mix, "origin", "items", "Queue items"), width="stretch", config=charts.CONFIG)
 
 
 # ---------------------------------------------------------------- 2. data health
@@ -390,7 +382,7 @@ def data_health():
         dqc = dq.copy()
         dqc["rule"] = dqc["rule_id"].map(ui.humanize_code)
         ui.card_title("Records flagged by each check")
-        st.altair_chart(hbar(dqc, "rule", "records", "Records"), width="stretch")
+        st.plotly_chart(charts.hbar(dqc, "rule", "records", "Records"), width="stretch", config=charts.CONFIG)
     with right:
         rule = st.selectbox("Show the records for", dq["rule_id"].tolist(), key="dq_rule", format_func=ui.humanize_code)
         ui.table(q(f"SELECT source_system, entity, record_key, field, observed_value, source_file, source_row "
@@ -398,62 +390,6 @@ def data_health():
 
 
 # ---------------------------------------------------------------- 3. queue & customer
-def cash_story(cash, t):
-    """The signature visual: daily cash by core against the CTR line, and running totals against each core's rule."""
-    ctr = t.get("thresholds.ctr_cash_threshold_usd", 10000.0)
-    per_core = t.get("thresholds.legacy_per_core_cash_30d_usd", 30000.0)
-    xcore = t.get("thresholds.cross_core_cash_total_usd", 50000.0)
-    d = cash.copy()
-    d["day"] = pd.to_datetime(d["posted_at"]).dt.normalize()
-    d["core"] = d["source_system"].map({"core_a": "Core A", "core_b": "Core B"})
-    d["amount_usd"] = d["amount_usd"].astype(float)
-    domain, rng = ["Core A", "Core B"], [ui.CORE_A, ui.CORE_B]
-    daily = d.groupby(["day", "core"], as_index=False)["amount_usd"].sum()
-    totals = d.groupby("day").agg(total=("amount_usd", "sum"), cores=("source_system", "nunique"),
-                                  ctr=("ctr_filed", lambda s: bool(pd.Series(s).astype(bool).any()))).reset_index()
-    missed = totals[(totals.cores >= 2) & (totals.total > ctr) & (~totals.ctr)]
-    x = alt.X("day:T", title=None, axis=alt.Axis(format="%d %b", labelAngle=0, grid=False))
-    bars = alt.Chart(daily).mark_bar(width=14, cornerRadiusEnd=2).encode(
-        x=x, y=alt.Y("sum(amount_usd):Q", title="Cash deposited that day", axis=alt.Axis(format="$,.0f")),
-        color=alt.Color("core:N", title=None, scale=alt.Scale(domain=domain, range=rng)),
-        tooltip=[alt.Tooltip("day:T", format="%d %b %Y", title="Day"), alt.Tooltip("core:N", title="Core"),
-                 alt.Tooltip("amount_usd:Q", format="$,.0f", title="Cash")])
-    rule_ctr = alt.Chart(pd.DataFrame({"y": [ctr]})).mark_rule(color=ui.RED, strokeDash=[5, 4], size=1.5).encode(y="y:Q")
-    lab_ctr = alt.Chart(pd.DataFrame({"y": [ctr], "t": [f"CTR threshold {money(ctr)} per person per day"]})).mark_text(
-        align="right", dy=-7, x="width", color=ui.RED, fontSize=12, fontWeight=600).encode(y="y:Q", text="t:N")
-    layers = [bars, rule_ctr, lab_ctr]
-    if len(missed):
-        layers.append(alt.Chart(missed).mark_text(dy=-10, color=ui.RED, fontWeight=700, fontSize=12).encode(
-            x="day:T", y="total:Q", text=alt.value("No CTR filed")))
-    daily_chart = alt.layer(*layers).properties(height=280)
-
-    d = d.sort_values("posted_at")
-    run = []
-    for core, g in d.groupby("core"):
-        g = g.groupby("day", as_index=False)["amount_usd"].sum()
-        g["running"] = g["amount_usd"].cumsum()
-        g["line"] = core
-        run.append(g[["day", "running", "line"]])
-    allg = d.groupby("day", as_index=False)["amount_usd"].sum()
-    allg["running"] = allg["amount_usd"].cumsum()
-    allg["line"] = "Both cores"
-    run = pd.concat(run + [allg[["day", "running", "line"]]])
-    lines = alt.Chart(run).mark_line(interpolate="step-after", strokeWidth=3, point=alt.OverlayMarkDef(size=36)).encode(
-        x=x, y=alt.Y("running:Q", title="Running total of cash", axis=alt.Axis(format="$,.0f"),
-                     scale=alt.Scale(domain=[0, max(float(run.running.max()), xcore) * 1.12])),
-        color=alt.Color("line:N", title=None, scale=alt.Scale(domain=domain + ["Both cores"], range=rng + [ui.BOTH])),
-        tooltip=[alt.Tooltip("day:T", format="%d %b %Y", title="Day"), alt.Tooltip("line:N", title="Line"),
-                 alt.Tooltip("running:Q", format="$,.0f", title="Running total")])
-    refs = pd.DataFrame({"y": [per_core, xcore], "t": [f"Each core's legacy alert rule {money(per_core)} in 30 days",
-                                                         f"Cross-core rule {money(xcore)} in 30 days"],
-                         "c": [ui.GREY, ui.RED]})
-    ref_rules = alt.Chart(refs).mark_rule(strokeDash=[5, 4], size=1.5).encode(y="y:Q", color=alt.Color("c:N", scale=None))
-    ref_text = alt.Chart(refs).mark_text(align="right", dy=-7, x="width", fontSize=12, fontWeight=600).encode(
-        y="y:Q", text="t:N", color=alt.Color("c:N", scale=None))
-    run_chart = alt.layer(lines, ref_rules, ref_text).properties(height=280)
-    return daily_chart, run_chart, d
-
-
 def queue_and_customer():
     ui.page_header("Alert queue & customer", "One ranked queue across both cores; every score shows its reasons and evidence",
                    meta())
@@ -527,7 +463,7 @@ def queue_and_customer():
              f"FROM GOLD.TRANSACTION WHERE party_id = '{pid}' AND txn_type = 'CASH_DEPOSIT' "
              f"AND posted_date > (SELECT MAX(posted_date) FROM GOLD.TRANSACTION) - 30 ORDER BY posted_at")
     if len(cash) and cash["source_system"].nunique() >= 1:
-        daily_chart, run_chart, d = cash_story(cash, thresholds())
+        d = cash.assign(amount_usd=cash["amount_usd"].astype(float))
         per = d.groupby("source_system")["amount_usd"].sum()
         a_usd, b_usd = float(per.get("core_a", 0)), float(per.get("core_b", 0))
         title = (f"Each bank saw under {money(thresholds().get('thresholds.legacy_per_core_cash_30d_usd', 30000))}. "
@@ -538,8 +474,12 @@ def queue_and_customer():
                     f'<div style="color:{ui.MUTED};font-size:.88rem;margin:2px 0 4px 0">Core A {money(a_usd)} + Core B '
                     f'{money(b_usd)} in {len(d)} deposits, the largest {money(d.amount_usd.max())}.</div>')
             c1, c2 = st.columns(2, gap="large")
-            c1.altair_chart(style(daily_chart), width="stretch")
-            c2.altair_chart(style(run_chart), width="stretch")
+            th = thresholds()
+            c1.plotly_chart(charts.daily_cash(cash, th.get("thresholds.ctr_cash_threshold_usd", 10000.0)),
+                            width="stretch", config=charts.CONFIG)
+            c2.plotly_chart(charts.running_cash(cash, th.get("thresholds.legacy_per_core_cash_30d_usd", 30000.0),
+                                                th.get("thresholds.cross_core_cash_total_usd", 50000.0)),
+                            width="stretch", config=charts.CONFIG)
 
     t1, t2, t3, t4 = st.tabs(["Accounts and cash", "KYC", "Alerts and notes", "Loans"])
     with t1:
