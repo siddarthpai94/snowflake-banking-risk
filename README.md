@@ -37,6 +37,15 @@ streamlit run app/streamlit_app.py                 # the app
 
 On Windows PowerShell: `powershell -ExecutionPolicy Bypass -File scripts\build_all.ps1 -Setup`. The build stops at the first error; fix it and rerun with `-SkipLoad` (`--skip-load`). It ends with the matching evaluation (0 false merges), the F4 risk check (PASS) and the golden check (15 of 15).
 
+### Run it online (Streamlit Community Cloud)
+
+The hosted copy runs on the offline database, so it needs no Snowflake account or credentials.
+
+1. Sign in at [share.streamlit.io](https://share.streamlit.io) with GitHub and click **Create app**, then **Deploy a public app from GitHub**.
+2. Repository: this repo; branch `main`; main file path `app/streamlit_app.py`.
+3. **Advanced settings**: Python 3.11; in **Secrets** paste `RISK_COPILOT_BACKEND = "duckdb:data/out/app.duckdb"`.
+4. Click **Deploy**. On the first visit the app generates the synthetic data and builds its database once (about two minutes), then opens the sign-in page.
+
 ### Signing in to the app
 
 The app opens on a sign-in page. Three fictional demo users, all with the password `Demo@2026`:

@@ -39,6 +39,39 @@ AS_OF = "31 Aug 2026"
 st.set_page_config(page_title="Risk Copilot", layout="wide")
 
 
+def _offline_backend():
+    """A hosted copy (Streamlit Community Cloud) sets RISK_COPILOT_BACKEND in its secrets; build its DB on first start."""
+    import os
+    try:
+        if "RISK_COPILOT_BACKEND" in st.secrets and not os.getenv("RISK_COPILOT_BACKEND"):
+            os.environ["RISK_COPILOT_BACKEND"] = str(st.secrets["RISK_COPILOT_BACKEND"])
+    except Exception:                    # no secrets file: running locally
+        pass
+    backend = os.getenv("RISK_COPILOT_BACKEND", "")
+    if not backend.startswith("duckdb:"):
+        return
+    import bootstrap
+    path = backend.split(":", 1)[1]
+    target = Path(path) if Path(path).is_absolute() else bootstrap.REPO / path
+    if target.exists():
+        return
+    with st.status("Preparing the demo data for first use. This happens once and takes about two minutes.",
+                   expanded=True) as box:
+        box.write("Generating the synthetic two-bank dataset, then building the offline database…")
+        _build_once(path)
+        box.update(label="Demo data ready", state="complete", expanded=False)
+
+
+@st.cache_resource(show_spinner=False)
+def _build_once(path):
+    """Once per server process; a second visitor arriving mid-build waits for this one."""
+    import bootstrap
+    return bootstrap.ensure_offline_db(path, log=lambda m: None)
+
+
+_offline_backend()
+
+
 def md_safe(text):
     """Display Markdown: plain English (no codes, underscores or brackets), and dollar amounts shown as money,
     not as maths ('$' starts a formula in Streamlit)."""
